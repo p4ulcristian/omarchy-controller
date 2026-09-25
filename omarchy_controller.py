@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import selectors
+import signal
 import socket
 import subprocess
 import sys
@@ -212,6 +213,24 @@ def hyprctl_json(what: str):
         return None
 
 
+MOUSE_FOCUS = "misc:mouse_move_focuses_monitor"
+
+
+def mouse_focus_option() -> bool:
+    return bool((hyprctl_json(f"getoption {MOUSE_FOCUS}") or {}).get("bool", True))
+
+
+def set_mouse_focus(on: bool) -> None:
+    """Whether moving the pointer onto another monitor focuses it. Without it,
+    pointing at an empty monitor leaves focus behind, so the Omarchy menu and
+    workspace swipes act on the old one. Some setups turn it off so games
+    don't lose focus mid-match; the controller only turns it on while it is
+    driving the desktop, and puts the user's value back in game mode."""
+    subprocess.run(["hyprctl", "eval",
+                    f"hl.config({{ misc = {{ mouse_move_focuses_monitor = {str(on).lower()} }} }})"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+
 def hypr_dispatch(arg: str) -> None:
     subprocess.Popen(["hyprctl", "dispatch", arg],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -338,6 +357,7 @@ class Mapper:
         self.manual_pause = False
         self.auto_pause = False
         self.grabbed = False
+        self.mouse_focus_user = mouse_focus_option()   # restored whenever we let go
 
     # --- device lifecycle -------------------------------------------------
 
@@ -363,6 +383,8 @@ class Mapper:
                 d.close()
             except Exception:
                 pass
+        if self.grabbed:
+            set_mouse_focus(self.mouse_focus_user)
         self.devs, self.pad, self.touch, self.grabbed = [], None, None, False
         self.axes.clear()
 
@@ -380,6 +402,7 @@ class Mapper:
             except OSError as exc:
                 log.warning("grab %s: %s", d.path, exc)
         self.grabbed = want
+        set_mouse_focus(True if want else self.mouse_focus_user)
         if not want:
             self.release_all()
 
@@ -712,7 +735,14 @@ class Mapper:
             self.update_grab()
 
 
+def _raise_interrupt(*_) -> None:
+    raise KeyboardInterrupt
+
+
 def main() -> int:
+    # systemctl stop sends SIGTERM: exit through the same cleanup as ctrl+c so
+    # held keys are released and the user's Hyprland setting is put back.
+    signal.signal(signal.SIGTERM, _raise_interrupt)
     if sys.argv[1:] == ["--keymap"]:
         print(keymap_markdown(), end="")
         return 0

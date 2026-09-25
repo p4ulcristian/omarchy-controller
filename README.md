@@ -63,6 +63,12 @@ other apps. That would hide it from games, so:
   Steam game (`steam_app_*`) or gamescope.
 - Holding the PS button for one second toggles it by hand, for anything else.
 
+While it drives the desktop it also turns on Hyprland's
+`misc:mouse_move_focuses_monitor`, so pointing at another monitor focuses it
+and the Omarchy menu opens where the pointer is. In game mode, and when it
+stops, your own value is put back (some setups turn it off so a fullscreen
+game can't lose focus to a neighbouring monitor).
+
 ## Configuration
 
 Optional. Copy [config.example.toml](config.example.toml) to

@@ -30,7 +30,7 @@ SWIPE_LOCK = 60                 # movement before a swipe commits to sideways or
 VOLUME_STEP = 100               # touchpad units (of 1080) per volume step
 TICK = 0.008                 # seconds between pointer updates (~120 Hz)
 DEADZONE = 0.15
-POINTER_MAX = 1800.0         # px/s at full stick
+POINTER_MAX = 1500.0         # px/s at full stick
 PRECISION = 0.3
 SCROLL_MAX = 2400.0          # hi-res wheel units/s (120 = one notch)
 TRIGGER_ON, TRIGGER_OFF = 0.5, 0.3

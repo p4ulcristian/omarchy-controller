@@ -105,11 +105,11 @@ ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
-GUIDE_COMBOS = {
-    e.BTN_SOUTH: Bind([SUPER, e.KEY_ENTER], "Terminal"),
-}
+# Empty: combos live on L1, the PS button only toggles game mode.
+GUIDE_COMBOS: dict[int, Bind] = {}
 # LB held + another button: one-shot chord.
 LB_COMBOS = {
+    e.BTN_SOUTH: Bind([SUPER, e.KEY_ENTER], "Terminal"),
     e.BTN_NORTH: Bind([SUPER, e.KEY_W], "Close window"),          # physical Y / Triangle
 }
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}

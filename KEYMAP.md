@@ -31,9 +31,9 @@ Press the mic button to toggle it as an overlay.
 |---|---|
 | ✕ + ✕ | Ctrl + Enter (double tap) |
 | L2 + R2 | Fullscreen |
-| Hold PS + ✕ | Terminal |
 | Hold L1 + R-stick ↑ | Bigger text |
 | Hold L1 + R-stick ↓ | Smaller text |
+| Hold L1 + ✕ | Terminal |
 | Hold L1 + △ | Close window |
 
 ## In the Omarchy menu

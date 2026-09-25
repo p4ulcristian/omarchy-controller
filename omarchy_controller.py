@@ -731,7 +731,7 @@ class Mapper:
         elif abs(ry) >= ZOOM_THRESHOLD and self.menu_open():
             self.step(ry, lambda: self.tap([e.KEY_UP]), lambda: self.tap([e.KEY_DOWN]))
         else:
-            self.acc[2] += -ry * SCROLL_MAX * dt
+            self.acc[2] += ry * SCROLL_MAX * dt     # natural: stick up moves the content up
             self.acc[3] += rx * SCROLL_MAX * dt
         wrote = False
         for i, (code, unit) in enumerate(((e.REL_X, 1), (e.REL_Y, 1),

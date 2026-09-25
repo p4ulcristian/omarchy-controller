@@ -1,10 +1,11 @@
 # omarchy-controller settings. Copy to ~/.config/omarchy-controller/config.toml.
 # Everything is optional; with no file the controller works on its own.
 
-# R1 held = push-to-talk dictation. Point this at the Unix socket of a
-# dictation daemon that accepts "start" and "stop". Unset = R1 does nothing.
+# R1 held = push-to-talk dictation with justsay
+# (https://github.com/p4ulcristian/justsay), or any daemon whose Unix socket
+# accepts "start" and "stop". Unset = R1 does nothing.
 # [dictate]
-# socket = "/run/user/1000/dictate/dictate.sock"
+# socket = "/run/user/1000/justsay/justsay.sock"
 
 # R2 held = dictate, then send the transcript to an Iris server. Needs the
 # dictate socket above to also accept "stop-return" (stop and reply with the

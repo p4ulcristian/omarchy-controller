@@ -111,6 +111,9 @@ ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
 # LB + right stick sideways: next/previous workspace on the focused monitor (empty ones too).
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
+# LT + right stick sideways: take the window along to the next/previous workspace.
+MOVE_NEXT_WS = 'hl.dsp.window.move({ workspace = "r+1" })'
+MOVE_PREV_WS = 'hl.dsp.window.move({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
 # Empty: combos live on L1, the PS button only toggles game mode.
 GUIDE_COMBOS: dict[int, Bind] = {}
@@ -173,6 +176,7 @@ def keymap() -> dict:
     if IRIS_URL:
         add(e.ABS_RZ, "Hold: " + IRIS_TALK)
     add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
+    add(e.ABS_Z, "Hold + right stick ←/→: take window to prev / next workspace")
     add("dpad", "Focus window that way")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
@@ -348,6 +352,7 @@ class Mapper:
         self.swipe_axis: str | None = None      # "x"/"y" once the swipe has a direction, "click" if clicked
         self.click_pending = False              # pad pressed; zone decided at the end of the report
         self.touch_since = 0.0                  # when the finger landed, for taps
+        self.moved_by_trigger = False           # LT still down after a workspace move
         self.touching = False
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
         self.mic_down = False
@@ -690,6 +695,8 @@ class Mapper:
                 threading.Thread(target=talk_to_iris, daemon=True).start()
         else:
             self.unhold(("trig", code))
+        if code == e.ABS_Z:
+            self.moved_by_trigger = False
         if not any(self.trig.values()):
             self.trig_chord = False
 
@@ -767,7 +774,11 @@ class Mapper:
         speed = POINTER_MAX * (PRECISION if self.precision else 1.0) * dt
         self.acc[0] += lx * speed
         self.acc[1] += ly * speed
-        if self.zoom_mode:
+        if ("trig", e.ABS_Z) in self.btn_owner or self.moved_by_trigger:
+            # LT held: right stick sideways takes the window to another workspace.
+            self.step(rx, lambda: self.move_window(MOVE_PREV_WS),
+                      lambda: self.move_window(MOVE_NEXT_WS), WORKSPACE_REPEAT)
+        elif self.zoom_mode:
             # LB + right stick: sideways = workspaces, up/down = zoom. The
             # further-pushed direction wins, so a slightly diagonal push is one.
             if abs(rx) > abs(ry):
@@ -790,6 +801,14 @@ class Mapper:
                 wrote = True
         if wrote:
             self.ui.syn()
+
+    def move_window(self, dispatch: str) -> None:
+        # Let go of the Super+drag first: a window can't change workspace
+        # mid-drag. Press LT again to drag it on the new workspace.
+        self.unhold(("trig", e.ABS_Z))
+        self.moved_by_trigger = True
+        subprocess.run(["hyprctl", "dispatch", dispatch],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
     def step(self, v: float, negative, positive, repeat: float = ZOOM_REPEAT) -> None:
         # One action per push (up/left = negative), repeating every `repeat`

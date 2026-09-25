@@ -20,6 +20,7 @@ Press the mic button to toggle it as an overlay.
 | Create | Close window |
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold: move window (left stick) |
+| L2 | Hold + right stick ←/→: take window to prev / next workspace |
 | D-pad | Focus window that way |
 | Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Tap: arrow key toward that side |

@@ -22,7 +22,8 @@ Press the mic button to toggle it as an overlay.
 | L2 | Hold: move window (left stick) |
 | D-pad | Focus window that way |
 | Touchpad | Swipe ↑/↓: volume up / down |
-| Touchpad | Click: left click |
+| Touchpad | Click edge: arrow key (hold repeats) |
+| Touchpad | Click middle: left click |
 | Mic | Show / hide this cheat sheet |
 
 ## Combos

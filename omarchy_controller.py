@@ -28,6 +28,8 @@ DUALSENSE_NAMES = ("DualSense Wireless Controller", "DualSense Edge Wireless Con
 TOUCHPAD_SUFFIX = " Touchpad"   # grabbed like the pad: swipe pad, not a pointer
 SWIPE_LOCK = 60                 # movement before a swipe commits to sideways or up/down
 VOLUME_STEP = 100               # touchpad units (of 1080) per volume step
+TOUCH_SIZE = (1920, 1080)       # DualSense touchpad resolution
+CLICK_MIDDLE = 0.5              # clicks inside the middle half (each axis) are mouse clicks
 TICK = 0.008                 # seconds between pointer updates (~120 Hz)
 DEADZONE = 0.15
 POINTER_MAX = 1500.0         # px/s at full stick
@@ -172,7 +174,8 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
     add("dpad", "Focus window that way")
     add("touchpad", "Swipe ↑/↓: volume up / down")
-    add("touchpad", "Click: left click")
+    add("touchpad", "Click edge: arrow key (hold repeats)")
+    add("touchpad", "Click middle: left click")
     add("mic", "Show / hide this cheat sheet")
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
@@ -341,7 +344,8 @@ class Mapper:
         self.touch: evdev.InputDevice | None = None
         self.touch_pos = [None, None]           # finger x, y on the touchpad
         self.swipe_from: list[int] | None = None  # where the swipe started (or last volume step)
-        self.swipe_axis: str | None = None      # "x" or "y" once the swipe has a direction
+        self.swipe_axis: str | None = None      # "x"/"y" once the swipe has a direction, "click" if clicked
+        self.click_pending = False              # pad pressed; zone decided at the end of the report
         self.touching = False
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
         self.mic_down = False
@@ -477,7 +481,8 @@ class Mapper:
 
     def on_touch(self, ev) -> None:
         # One finger sliding up/down = volume, one step per VOLUME_STEP
-        # travelled; sideways does nothing. Clicking the pad = left click.
+        # travelled; sideways does nothing. Clicking the pad is a D-pad of
+        # arrows around its edges and a left click in the middle.
         if self.paused:
             return
         if ev.type == e.EV_KEY and ev.code == e.BTN_TOUCH:
@@ -486,13 +491,37 @@ class Mapper:
             self.swipe_axis = None
         elif ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
             if ev.value == 1:
-                self.hold("touchclick", [e.BTN_LEFT])
+                # The finger position may come later in the same report, so
+                # the zone is picked at its end (EV_SYN).
+                self.click_pending = True
             elif ev.value == 0:
+                if self.click_pending:
+                    self.on_pad_click()
                 self.unhold("touchclick")
+        elif ev.type == e.EV_SYN and self.click_pending:
+            self.on_pad_click()
         elif ev.type == e.EV_ABS and ev.code in (e.ABS_X, e.ABS_Y) and self.touching:
             self.touch_pos[0 if ev.code == e.ABS_X else 1] = ev.value
             if None not in self.touch_pos:
                 self.on_swipe(*self.touch_pos)
+
+    def on_pad_click(self) -> None:
+        self.click_pending = False
+        self.swipe_axis = "click"               # pressing moves the finger: no volume change
+        x, y = self.touch_pos
+        zone = None
+        if x is not None and y is not None:
+            # -1..1 from the centre; outside the middle, the axis pushed
+            # further wins, so corners belong to one arrow.
+            dx = x / TOUCH_SIZE[0] * 2 - 1
+            dy = y / TOUCH_SIZE[1] * 2 - 1
+            if max(abs(dx), abs(dy)) > CLICK_MIDDLE:
+                if abs(dx) >= abs(dy):
+                    zone = "left" if dx < 0 else "right"
+                else:
+                    zone = "up" if dy < 0 else "down"
+        # Held like a key, so holding the click autorepeats the arrow.
+        self.hold("touchclick", [ARROWS[zone]] if zone else [e.BTN_LEFT])
 
     def on_swipe(self, x: int, y: int) -> None:
         if self.swipe_from is None:

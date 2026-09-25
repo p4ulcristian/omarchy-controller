@@ -26,7 +26,6 @@ log = logging.getLogger("omarchy-controller")
 # separate device we use for swipes.
 DUALSENSE_NAMES = ("DualSense Wireless Controller", "DualSense Edge Wireless Controller")
 TOUCHPAD_SUFFIX = " Touchpad"   # grabbed like the pad: swipe pad, not a pointer
-SWIPE_DISTANCE = 450            # touchpad units (of 1920) for a workspace swipe
 SWIPE_LOCK = 60                 # movement before a swipe commits to sideways or up/down
 VOLUME_STEP = 100               # touchpad units (of 1080) per volume step
 TICK = 0.008                 # seconds between pointer updates (~120 Hz)
@@ -39,6 +38,7 @@ DOUBLE_TAP_WINDOW = 0.25    # second ✕ within this = Ctrl+Enter; a single ✕ 
 CHORD_WINDOW = 0.06         # both triggers within this = fullscreen, not clicks
 ZOOM_THRESHOLD = 0.5         # right stick deflection that counts as a zoom step
 ZOOM_REPEAT = 0.2           # seconds between zoom steps while the stick stays pushed
+WORKSPACE_REPEAT = 0.4      # seconds between workspace steps while the stick stays pushed
 GAME_TOGGLE_HOLD = 1.0      # hold the PS button this long to toggle game mode
 GAME_POLL = 1.0
 GAME_CLASSES = ("steam_app_", "gamescope")
@@ -104,7 +104,7 @@ TRIGGER_ACTION = {e.ABS_Z: Bind([SUPER, e.BTN_LEFT], "move window (left stick)")
 IRIS_TALK = "talk to Iris (release to send)"
 ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # LB + right stick
 ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
-# Touchpad swipes: next/previous workspace on the focused monitor (empty ones too).
+# LB + right stick sideways: next/previous workspace on the focused monitor (empty ones too).
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
@@ -170,7 +170,6 @@ def keymap() -> dict:
         add(e.ABS_RZ, "Hold: " + IRIS_TALK)
     add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
     add("dpad", "Focus window that way")
-    add("touchpad", "Swipe ←/→: prev / next workspace")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Click: left click")
     add("mic", "Show / hide this cheat sheet")
@@ -179,7 +178,9 @@ def keymap() -> dict:
               {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label}]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
                for c, b in GUIDE_COMBOS.items()]
-    combos += [{"keys": ["Hold " + name(e.BTN_TL), "R-stick ↑"], "action": ZOOM_IN.label},
+    combos += [{"keys": ["Hold " + name(e.BTN_TL), "R-stick ←"], "action": "Previous workspace"},
+               {"keys": ["Hold " + name(e.BTN_TL), "R-stick →"], "action": "Next workspace"},
+               {"keys": ["Hold " + name(e.BTN_TL), "R-stick ↑"], "action": ZOOM_IN.label},
                {"keys": ["Hold " + name(e.BTN_TL), "R-stick ↓"], "action": ZOOM_OUT.label}]
     combos += [{"keys": ["Hold " + name(e.BTN_TL), name(c)], "action": b.label}
                for c, b in LB_COMBOS.items()]
@@ -340,7 +341,6 @@ class Mapper:
         self.touch_pos = [None, None]           # finger x, y on the touchpad
         self.swipe_from: list[int] | None = None  # where the swipe started (or last volume step)
         self.swipe_axis: str | None = None      # "x" or "y" once the swipe has a direction
-        self.swipe_fired = False
         self.touching = False
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
         self.mic_down = False
@@ -475,15 +475,14 @@ class Mapper:
             self.on_button(ev.code, ev.value == 1)
 
     def on_touch(self, ev) -> None:
-        # One finger sliding sideways = workspace swipe: right goes to the next
-        # workspace, left to the previous. Sliding up/down = volume, one step
-        # per VOLUME_STEP travelled. Clicking the pad = left click.
+        # One finger sliding up/down = volume, one step per VOLUME_STEP
+        # travelled; sideways does nothing. Clicking the pad = left click.
         if self.paused:
             return
         if ev.type == e.EV_KEY and ev.code == e.BTN_TOUCH:
             self.touching = bool(ev.value)
             self.touch_pos, self.swipe_from = [None, None], None
-            self.swipe_axis, self.swipe_fired = None, False
+            self.swipe_axis = None
         elif ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
             if ev.value == 1:
                 self.hold("touchclick", [e.BTN_LEFT])
@@ -503,11 +502,9 @@ class Mapper:
             if max(abs(dx), abs(dy)) < SWIPE_LOCK:
                 return
             self.swipe_axis = "x" if abs(dx) >= abs(dy) else "y"
-        if self.swipe_axis == "x":
-            if not self.swipe_fired and abs(dx) >= SWIPE_DISTANCE:
-                self.swipe_fired = True
-                hypr_dispatch(NEXT_WS if dx > 0 else PREV_WS)
-        elif abs(dy) >= VOLUME_STEP:
+        # A sideways swipe is locked out, so drifting while clicking or
+        # resting a thumb never changes the volume.
+        if self.swipe_axis == "y" and abs(dy) >= VOLUME_STEP:
             self.tap(VOLUME_UP if dy < 0 else VOLUME_DOWN)   # touchpad y grows downward
             self.swipe_from[1] += VOLUME_STEP if dy > 0 else -VOLUME_STEP
 
@@ -721,9 +718,15 @@ class Mapper:
         self.acc[0] += lx * speed
         self.acc[1] += ly * speed
         if self.zoom_mode:
-            self.step(ry, ZOOM_IN.keys, ZOOM_OUT.keys)
+            # LB + right stick: sideways = workspaces, up/down = zoom. The
+            # further-pushed direction wins, so a slightly diagonal push is one.
+            if abs(rx) > abs(ry):
+                self.step(rx, lambda: hypr_dispatch(PREV_WS), lambda: hypr_dispatch(NEXT_WS),
+                          WORKSPACE_REPEAT)
+            else:
+                self.step(ry, lambda: self.tap(ZOOM_IN.keys), lambda: self.tap(ZOOM_OUT.keys))
         elif abs(ry) >= ZOOM_THRESHOLD and self.menu_open():
-            self.step(ry, [e.KEY_UP], [e.KEY_DOWN])
+            self.step(ry, lambda: self.tap([e.KEY_UP]), lambda: self.tap([e.KEY_DOWN]))
         else:
             self.acc[2] += -ry * SCROLL_MAX * dt
             self.acc[3] += rx * SCROLL_MAX * dt
@@ -738,15 +741,16 @@ class Mapper:
         if wrote:
             self.ui.syn()
 
-    def step(self, ry: float, up: list[int], down: list[int]) -> None:
-        # One tap per push, repeating every ZOOM_REPEAT while held.
-        if abs(ry) < ZOOM_THRESHOLD:
+    def step(self, v: float, negative, positive, repeat: float = ZOOM_REPEAT) -> None:
+        # One action per push (up/left = negative), repeating every `repeat`
+        # seconds while the stick stays pushed.
+        if abs(v) < ZOOM_THRESHOLD:
             self.zoom_next = 0.0
             return
         now = time.monotonic()
         if now >= self.zoom_next:
-            self.tap(up if ry < 0 else down)
-            self.zoom_next = now + ZOOM_REPEAT
+            (negative if v < 0 else positive)()
+            self.zoom_next = now + repeat
 
     def poll_game(self) -> None:
         if self.manual_pause:

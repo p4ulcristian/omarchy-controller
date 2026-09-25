@@ -19,9 +19,12 @@ button):
 | Right stick | Scroll |
 | ✕ / ○ / □ / △ | Enter / Escape / Left click / Backspace |
 | D-pad | Focus the window in that direction |
-| Touchpad | Swipe left/right: workspace, up/down: volume, click: left click |
+| Touchpad | Swipe up/down: volume, click: left click |
 | Options | Omarchy menu (D-pad or right stick to move, ✕ to open) |
 | Create | Close window |
+| L1 + right stick ←/→ | Previous / next workspace |
+| L1 + right stick ↑/↓ | Bigger / smaller text |
+| L1 + ✕ / △ | Terminal / close window |
 | L2 held | Move the window with the left stick |
 | L2 + R2 | Fullscreen |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |

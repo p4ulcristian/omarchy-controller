@@ -21,7 +21,6 @@ Press the mic button to toggle it as an overlay.
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold: move window (left stick) |
 | D-pad | Focus window that way |
-| Touchpad | Swipe ←/→: prev / next workspace |
 | Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Click: left click |
 | Mic | Show / hide this cheat sheet |
@@ -32,6 +31,8 @@ Press the mic button to toggle it as an overlay.
 |---|---|
 | ✕ + ✕ | Ctrl + Enter (double tap) |
 | L2 + R2 | Fullscreen |
+| Hold L1 + R-stick ← | Previous workspace |
+| Hold L1 + R-stick → | Next workspace |
 | Hold L1 + R-stick ↑ | Bigger text |
 | Hold L1 + R-stick ↓ | Smaller text |
 | Hold L1 + ✕ | Terminal |

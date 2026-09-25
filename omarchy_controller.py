@@ -86,9 +86,9 @@ class Bind(NamedTuple):
 
 # Buttons mirrored as held keys (so autorepeat and drag work).
 BASE_HOLD = {
-    e.BTN_SOUTH: Bind([e.KEY_ENTER], "Enter"),
+    e.BTN_SOUTH: Bind([e.BTN_LEFT], "Left click (hold = drag)"),  # physical A / Cross
     e.BTN_EAST: Bind([e.KEY_ESC], "Escape"),
-    e.BTN_WEST: Bind([e.BTN_LEFT], "Left click (hold = drag)"),   # physical X / Square
+    e.BTN_WEST: Bind([e.KEY_ENTER], "Enter"),                     # physical X / Square
     e.BTN_NORTH: Bind([e.KEY_BACKSPACE], "Backspace"),            # physical Y / Triangle
     e.BTN_THUMBL: Bind([e.BTN_MIDDLE], "Middle click"),
 }
@@ -97,7 +97,8 @@ BASE_TAP = {
     e.BTN_START: Bind([SUPER, e.KEY_SPACE], "Omarchy menu"),
     e.BTN_SELECT: Bind([SUPER, e.KEY_W], "Close window"),
 }
-CROSS_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # ✕ twice
+ENTER_BTN = e.BTN_WEST      # □: Enter, double tap = Ctrl+Enter
+ENTER_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # □ twice
 FULLSCREEN = Bind([SUPER, e.KEY_F], "Fullscreen")               # LT + RT together
 # RT is push-to-talk to Iris if configured (see talk_to_iris); LT holds these keys.
 TRIGGER_ACTION = {e.ABS_Z: Bind([SUPER, e.BTN_LEFT], "move window (left stick)")}
@@ -122,7 +123,7 @@ ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KE
 OUT_KEYS = sorted(
     {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, TRIGGER_ACTION)
      for b in m.values() for k in b.keys}
-    | {k for b in (CROSS_DOUBLE, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
+    | {k for b in (ENTER_DOUBLE, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
     | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}
     | {SUPER, SHIFT, CTRL, ALT, e.KEY_A, e.KEY_Z}
@@ -174,7 +175,7 @@ def keymap() -> dict:
     add("touchpad", "Click: left click")
     add("mic", "Show / hide this cheat sheet")
 
-    combos = [{"keys": [name(e.BTN_SOUTH), name(e.BTN_SOUTH)], "action": CROSS_DOUBLE.label},
+    combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
               {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label}]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
                for c, b in GUIDE_COMBOS.items()]
@@ -185,7 +186,7 @@ def keymap() -> dict:
     combos += [{"keys": ["Hold " + name(e.BTN_TL), name(c)], "action": b.label}
                for c, b in LB_COMBOS.items()]
     menu = [{"keys": ["D-pad", "R-stick"], "action": "Move through the list"},
-            {"keys": [name(e.BTN_SOUTH)], "action": "Open"},
+            {"keys": [name(e.BTN_SOUTH) + " / " + name(ENTER_BTN)], "action": "Open"},
             {"keys": [name(e.BTN_EAST)], "action": "Close"}]
     for c in combos:
         c["action"] = LABELS.get(c["action"], c["action"])
@@ -358,7 +359,7 @@ class Mapper:
         self.hat = {"x": 0, "y": 0}
         self.precision = False
         self.zoom_mode = False                  # LB held: right stick zooms
-        self.cross_first: float | None = None   # first ✕ press, waiting for a second one
+        self.enter_first: float | None = None   # first □ press, waiting for a second one
         self.zoom_next = 0.0                    # when the next zoom/arrow step may fire
         self.menu_checked = (0.0, False)        # (time, omarchy menu open?)
         self.acc = [0.0, 0.0, 0.0, 0.0]         # dx, dy, wheel_v, wheel_h
@@ -441,7 +442,7 @@ class Mapper:
             self.key(k, False)
 
     def release_all(self) -> None:
-        self.cross_first = None
+        self.enter_first = None
         if self.btn_owner.pop("iris", None) is not None:
             dictate("stop")
         self.trig_pending.clear()
@@ -556,8 +557,8 @@ class Mapper:
             self.tap(LB_COMBOS[code].keys)
             return
 
-        if code == e.BTN_SOUTH:
-            self.on_cross(down)
+        if code == ENTER_BTN:
+            self.on_enter(down)
             return
         if code == e.BTN_THUMBR:
             self.precision = down        # slow pointer only while held
@@ -577,36 +578,38 @@ class Mapper:
             if DICTATE_SOCK:
                 self.btn_owner["dictate"] = []
                 dictate("start")
+        elif code == e.BTN_SOUTH and self.menu_open():
+            self.hold(code, [e.KEY_ENTER])   # ✕ confirms in the menu instead of clicking
         elif code in BASE_HOLD:
             self.hold(code, BASE_HOLD[code].keys)
         elif code in BASE_TAP:
             self.tap(BASE_TAP[code].keys)
 
-    def on_cross(self, down: bool) -> None:
-        # ✕ is Enter, but a second press within DOUBLE_TAP_WINDOW makes it
+    def on_enter(self, down: bool) -> None:
+        # □ is Enter, but a second press within DOUBLE_TAP_WINDOW makes it
         # Ctrl+Enter instead, so the first press is held back until then.
         if not down:
-            self.unhold(e.BTN_SOUTH)     # only held if the window already ran out
+            self.unhold(ENTER_BTN)       # only held if the window already ran out
             return
-        if self.cross_first is not None:
-            self.cross_first = None
-            self.tap(CROSS_DOUBLE.keys)
+        if self.enter_first is not None:
+            self.enter_first = None
+            self.tap(ENTER_DOUBLE.keys)
         else:
-            self.cross_first = time.monotonic()
+            self.enter_first = time.monotonic()
 
-    def check_cross(self) -> None:
-        if self.cross_first is None or time.monotonic() - self.cross_first < DOUBLE_TAP_WINDOW:
+    def check_enter(self) -> None:
+        if self.enter_first is None or time.monotonic() - self.enter_first < DOUBLE_TAP_WINDOW:
             return
-        self.cross_first = None
+        self.enter_first = None
         # Still held: hold Enter so it autorepeats; already released: one Enter.
-        if self.cross_held():
-            self.hold(e.BTN_SOUTH, BASE_HOLD[e.BTN_SOUTH].keys)
+        if self.enter_held():
+            self.hold(ENTER_BTN, BASE_HOLD[ENTER_BTN].keys)
         else:
-            self.tap(BASE_HOLD[e.BTN_SOUTH].keys)
+            self.tap(BASE_HOLD[ENTER_BTN].keys)
 
-    def cross_held(self) -> bool:
+    def enter_held(self) -> bool:
         try:
-            return e.BTN_SOUTH in self.pad.active_keys()
+            return ENTER_BTN in self.pad.active_keys()
         except (OSError, AttributeError):
             return False
 
@@ -709,7 +712,7 @@ class Mapper:
         if self.paused or not self.pad:
             return
         self.check_triggers()
-        self.check_cross()
+        self.check_enter()
         lx, ly = self.curve(self.axes.get(e.ABS_X, 0.0), self.axes.get(e.ABS_Y, 0.0))
         rx, ry = self.curve(self.axes.get(e.ABS_RX, 0.0), self.axes.get(e.ABS_RY, 0.0))
 

@@ -7,9 +7,9 @@ Press the mic button to toggle it as an overlay.
 
 | Input | Action |
 |---|---|
-| ✕ | Enter |
+| ✕ | Left click (hold = drag) |
 | ○ | Escape |
-| □ | Left click (hold = drag) |
+| □ | Enter |
 | △ | Backspace |
 | L1 | Hold: combo layer |
 | Left stick | Move pointer |
@@ -29,7 +29,7 @@ Press the mic button to toggle it as an overlay.
 
 | Input | Action |
 |---|---|
-| ✕ + ✕ | Ctrl + Enter (double tap) |
+| □ + □ | Ctrl + Enter (double tap) |
 | L2 + R2 | Fullscreen |
 | Hold L1 + R-stick ← | Previous workspace |
 | Hold L1 + R-stick → | Next workspace |
@@ -43,7 +43,7 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | D-pad + R-stick | Move through the list |
-| ✕ | Open |
+| ✕ / □ | Open |
 | ○ | Close |
 
 ## Game mode

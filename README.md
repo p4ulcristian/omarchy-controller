@@ -17,10 +17,10 @@ button):
 |---|---|
 | Left stick | Move pointer (click and hold right stick for precision) |
 | Right stick | Scroll |
-| ✕ / ○ / □ / △ | Enter / Escape / Left click / Backspace |
+| ✕ / ○ / □ / △ | Left click / Escape / Enter / Backspace |
 | D-pad | Focus the window in that direction |
 | Touchpad | Swipe up/down: volume, click: left click |
-| Options | Omarchy menu (D-pad or right stick to move, ✕ to open) |
+| Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
 | Create | Close window |
 | L1 + right stick ←/→ | Previous / next workspace |
 | L1 + right stick ↑/↓ | Bigger / smaller text |

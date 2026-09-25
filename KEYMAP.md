@@ -22,6 +22,7 @@ Press the mic button to toggle it as an overlay.
 | L2 | Hold: move window (left stick) |
 | D-pad | Focus window that way |
 | Touchpad | Swipe ←/→: prev / next workspace |
+| Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Click: left click |
 | Mic | Show / hide this cheat sheet |
 

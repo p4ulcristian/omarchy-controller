@@ -27,6 +27,8 @@ log = logging.getLogger("omarchy-controller")
 DUALSENSE_NAMES = ("DualSense Wireless Controller", "DualSense Edge Wireless Controller")
 TOUCHPAD_SUFFIX = " Touchpad"   # grabbed like the pad: swipe pad, not a pointer
 SWIPE_DISTANCE = 450            # touchpad units (of 1920) for a workspace swipe
+SWIPE_LOCK = 60                 # movement before a swipe commits to sideways or up/down
+VOLUME_STEP = 100               # touchpad units (of 1080) per volume step
 TICK = 0.008                 # seconds between pointer updates (~120 Hz)
 DEADZONE = 0.15
 POINTER_MAX = 1800.0         # px/s at full stick
@@ -113,6 +115,8 @@ LB_COMBOS = {
     e.BTN_SOUTH: Bind([SUPER, e.KEY_ENTER], "Terminal"),
     e.BTN_NORTH: Bind([SUPER, e.KEY_W], "Close window"),          # physical Y / Triangle
 }
+# Touchpad swipe up/down: the media keys, so Omarchy's volume binding and OSD apply.
+VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}
 
 OUT_KEYS = sorted(
@@ -120,6 +124,7 @@ OUT_KEYS = sorted(
      for b in m.values() for k in b.keys}
     | {k for b in (CROSS_DOUBLE, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
+    | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}
     | {SUPER, SHIFT, CTRL, ALT, e.KEY_A, e.KEY_Z}
     | {e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE}
 )
@@ -166,6 +171,7 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
     add("dpad", "Focus window that way")
     add("touchpad", "Swipe ←/→: prev / next workspace")
+    add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Click: left click")
     add("mic", "Show / hide this cheat sheet")
 
@@ -331,7 +337,9 @@ class Mapper:
         self.devs: list[evdev.InputDevice] = []
         self.pad: evdev.InputDevice | None = None
         self.touch: evdev.InputDevice | None = None
-        self.swipe_x: int | None = None         # ABS_X where the finger landed
+        self.touch_pos = [None, None]           # finger x, y on the touchpad
+        self.swipe_from: list[int] | None = None  # where the swipe started (or last volume step)
+        self.swipe_axis: str | None = None      # "x" or "y" once the swipe has a direction
         self.swipe_fired = False
         self.touching = False
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
@@ -468,22 +476,40 @@ class Mapper:
 
     def on_touch(self, ev) -> None:
         # One finger sliding sideways = workspace swipe: right goes to the next
-        # workspace, left to the previous. Clicking the pad = left click.
+        # workspace, left to the previous. Sliding up/down = volume, one step
+        # per VOLUME_STEP travelled. Clicking the pad = left click.
         if self.paused:
             return
         if ev.type == e.EV_KEY and ev.code == e.BTN_TOUCH:
-            self.touching, self.swipe_x, self.swipe_fired = bool(ev.value), None, False
+            self.touching = bool(ev.value)
+            self.touch_pos, self.swipe_from = [None, None], None
+            self.swipe_axis, self.swipe_fired = None, False
         elif ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
             if ev.value == 1:
                 self.hold("touchclick", [e.BTN_LEFT])
             elif ev.value == 0:
                 self.unhold("touchclick")
-        elif ev.type == e.EV_ABS and ev.code == e.ABS_X and self.touching:
-            if self.swipe_x is None:
-                self.swipe_x = ev.value          # first position after landing
-            elif not self.swipe_fired and abs(ev.value - self.swipe_x) >= SWIPE_DISTANCE:
+        elif ev.type == e.EV_ABS and ev.code in (e.ABS_X, e.ABS_Y) and self.touching:
+            self.touch_pos[0 if ev.code == e.ABS_X else 1] = ev.value
+            if None not in self.touch_pos:
+                self.on_swipe(*self.touch_pos)
+
+    def on_swipe(self, x: int, y: int) -> None:
+        if self.swipe_from is None:
+            self.swipe_from = [x, y]             # first position after landing
+            return
+        dx, dy = x - self.swipe_from[0], y - self.swipe_from[1]
+        if self.swipe_axis is None:
+            if max(abs(dx), abs(dy)) < SWIPE_LOCK:
+                return
+            self.swipe_axis = "x" if abs(dx) >= abs(dy) else "y"
+        if self.swipe_axis == "x":
+            if not self.swipe_fired and abs(dx) >= SWIPE_DISTANCE:
                 self.swipe_fired = True
-                hypr_dispatch(NEXT_WS if ev.value > self.swipe_x else PREV_WS)
+                hypr_dispatch(NEXT_WS if dx > 0 else PREV_WS)
+        elif abs(dy) >= VOLUME_STEP:
+            self.tap(VOLUME_UP if dy < 0 else VOLUME_DOWN)   # touchpad y grows downward
+            self.swipe_from[1] += VOLUME_STEP if dy > 0 else -VOLUME_STEP
 
     def on_hid(self, report: bytes) -> None:
         # The kernel driver drops the mic button, so read it from the raw report:

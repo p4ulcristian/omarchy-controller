@@ -31,6 +31,8 @@ if not any(p.get("id") == plugin for p in plugins):
         f.write("\n")
     print("enabled the cheat sheet in", path)
 PY
+  # Make the running shell pick up the plugin now, not at next login.
+  command -v omarchy-shell >/dev/null && omarchy-shell -q shell rescanPlugins || true
 fi
 
 cp systemd/omarchy-controller.service ~/.config/systemd/user/

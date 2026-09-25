@@ -19,7 +19,7 @@ button):
 | Right stick | Scroll |
 | ✕ / ○ / □ / △ | Left click / Escape / Enter / Backspace |
 | D-pad | Focus the window in that direction |
-| Touchpad | Click: arrow key toward the side you press (hold repeats), swipe up/down: volume |
+| Touchpad | Tap: arrow key toward the side you touch (click and hold to repeat), swipe up/down: volume |
 | Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
 | Create | Close window |
 | L1 + right stick ←/→ | Previous / next workspace |

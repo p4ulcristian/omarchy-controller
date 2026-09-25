@@ -29,7 +29,8 @@ TOUCHPAD_SUFFIX = " Touchpad"   # grabbed like the pad: swipe pad, not a pointer
 SWIPE_LOCK = 60                 # movement before a swipe commits to sideways or up/down
 VOLUME_STEP = 100               # touchpad units (of 1080) per volume step
 TOUCH_SIZE = (1920, 1080)       # DualSense touchpad resolution
-CLICK_DEADZONE = 0.1            # clicks this close to the centre have no direction: ignored
+CLICK_DEADZONE = 0.1            # taps/clicks this close to the centre have no direction: ignored
+TAP_TIME = 0.25                 # a touch lifted within this, without sliding, is a tap
 TICK = 0.008                 # seconds between pointer updates (~120 Hz)
 DEADZONE = 0.15
 POINTER_MAX = 1500.0         # px/s at full stick
@@ -174,7 +175,8 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
     add("dpad", "Focus window that way")
     add("touchpad", "Swipe ↑/↓: volume up / down")
-    add("touchpad", "Click: arrow key toward that side (hold repeats)")
+    add("touchpad", "Tap: arrow key toward that side")
+    add("touchpad", "Click & hold: arrow key, repeating")
     add("mic", "Show / hide this cheat sheet")
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
@@ -345,6 +347,7 @@ class Mapper:
         self.swipe_from: list[int] | None = None  # where the swipe started (or last volume step)
         self.swipe_axis: str | None = None      # "x"/"y" once the swipe has a direction, "click" if clicked
         self.click_pending = False              # pad pressed; zone decided at the end of the report
+        self.touch_since = 0.0                  # when the finger landed, for taps
         self.touching = False
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
         self.mic_down = False
@@ -480,12 +483,17 @@ class Mapper:
 
     def on_touch(self, ev) -> None:
         # One finger sliding up/down = volume, one step per VOLUME_STEP
-        # travelled; sideways does nothing. Clicking the pad is a D-pad of
-        # arrows: the side you press is the arrow sent.
+        # travelled; sideways does nothing. A tap (touch and lift, no slide)
+        # or a click is an arrow key: the side you touch is the arrow sent.
         if self.paused:
             return
         if ev.type == e.EV_KEY and ev.code == e.BTN_TOUCH:
+            if not ev.value and self.is_tap():
+                zone = self.pad_zone(*self.swipe_from)
+                if zone:
+                    self.tap([ARROWS[zone]])
             self.touching = bool(ev.value)
+            self.touch_since = time.monotonic()
             self.touch_pos, self.swipe_from = [None, None], None
             self.swipe_axis = None
         elif ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
@@ -504,21 +512,31 @@ class Mapper:
             if None not in self.touch_pos:
                 self.on_swipe(*self.touch_pos)
 
+    def is_tap(self) -> bool:
+        # Short, never slid far enough to count as a swipe, and not a click
+        # (which already sent its arrow).
+        return (self.swipe_from is not None and self.swipe_axis is None
+                and time.monotonic() - self.touch_since < TAP_TIME)
+
+    @staticmethod
+    def pad_zone(x: int | None, y: int | None) -> str | None:
+        """Which arrow a touch at (x, y) means. -1..1 from the centre; the axis
+        pushed further wins, so the pad splits into four triangles and a
+        corner belongs to one arrow."""
+        if x is None or y is None:
+            return None
+        dx = x / TOUCH_SIZE[0] * 2 - 1
+        dy = y / TOUCH_SIZE[1] * 2 - 1
+        if max(abs(dx), abs(dy)) <= CLICK_DEADZONE:
+            return None
+        if abs(dx) >= abs(dy):
+            return "left" if dx < 0 else "right"
+        return "up" if dy < 0 else "down"
+
     def on_pad_click(self) -> None:
         self.click_pending = False
-        self.swipe_axis = "click"               # pressing moves the finger: no volume change
-        x, y = self.touch_pos
-        zone = None
-        if x is not None and y is not None:
-            # -1..1 from the centre; the axis pushed further wins, so the pad
-            # splits into four triangles and corners belong to one arrow.
-            dx = x / TOUCH_SIZE[0] * 2 - 1
-            dy = y / TOUCH_SIZE[1] * 2 - 1
-            if max(abs(dx), abs(dy)) > CLICK_DEADZONE:
-                if abs(dx) >= abs(dy):
-                    zone = "left" if dx < 0 else "right"
-                else:
-                    zone = "up" if dy < 0 else "down"
+        self.swipe_axis = "click"               # pressing moves the finger: no volume, no tap
+        zone = self.pad_zone(*self.touch_pos)
         # Held like a key, so holding the click autorepeats the arrow.
         if zone:
             self.hold("touchclick", [ARROWS[zone]])

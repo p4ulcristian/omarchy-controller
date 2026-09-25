@@ -1,0 +1,19 @@
+# omarchy-controller settings. Copy to ~/.config/omarchy-controller/config.toml.
+# Everything is optional; with no file the controller works on its own.
+
+# R1 held = push-to-talk dictation. Point this at the Unix socket of a
+# dictation daemon that accepts "start" and "stop". Unset = R1 does nothing.
+# [dictate]
+# socket = "/run/user/1000/dictate/dictate.sock"
+
+# R2 held = dictate, then send the transcript to an Iris server. Needs the
+# dictate socket above to also accept "stop-return" (stop and reply with the
+# text). The secret is read from a KEY=value file so it stays out of this one.
+# [iris]
+# url = "http://127.0.0.1:4270/api/chat"
+# secret_file = "~/path/to/.env"
+# secret_key = "IRIS_INTERNAL_SECRET"
+
+# Rename actions in the cheat sheet, e.g. when you rebound Super+Enter.
+# [labels]
+# "Terminal" = "Claude in ~/Work"

@@ -19,6 +19,7 @@ Press the mic button to toggle it as an overlay.
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
 | L2 | Hold + right stick ←/→: previous / next workspace |
+| L2 | Hold + right stick ↑/↓: bigger / smaller text |
 | L2 | Hold + D-pad ↑/↓: volume up / down |
 | L2 | Hold + D-pad ←/→: back / forward |
 | R2 | Hold + left stick: move window |
@@ -37,10 +38,13 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
+| R2 + R2 | Toggle floating / tiling |
 | L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
 | Hold L2 + R-stick ← | Previous workspace |
 | Hold L2 + R-stick → | Next workspace |
+| Hold L2 + R-stick ↑ | Bigger text |
+| Hold L2 + R-stick ↓ | Smaller text |
 | Hold L2 + D-pad ↑ | Volume up |
 | Hold L2 + D-pad ↓ | Volume down |
 | Hold L2 + D-pad ← | Back |

@@ -146,8 +146,10 @@ LB_COMBOS = {
 VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}
 
-# L2/R2 double tap: user binds only (see [[bind]] in config.example.toml).
-DOUBLE_TRIGGERS: dict[int, Bind] = {}
+# L2/R2 double tap. R2 toggles floating; a [[bind]] "R2 double" / "L2 double" replaces or adds.
+DOUBLE_TRIGGERS: dict[int, Bind] = {
+    e.ABS_RZ: Bind([SUPER, e.KEY_T], "Toggle floating / tiling"),   # Omarchy's Super+T
+}
 # RT held + D-pad direction: user binds only ("R2 + ↑" in [[bind]]).
 RT_DPAD: dict[str, Bind] = {}
 DPAD_NAMES = {"↑": "up", "→": "right", "↓": "down", "←": "left",
@@ -304,6 +306,7 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Arrow keys (hold to repeat)")
     add(e.ABS_Z, "Hold + right stick ←/→: previous / next workspace")
+    add(e.ABS_Z, "Hold + right stick ↑/↓: bigger / smaller text")
     add(e.ABS_Z, "Hold + D-pad ↑/↓: volume up / down")
     add(e.ABS_Z, "Hold + D-pad ←/→: back / forward")
     add(e.ABS_RZ, "Hold + left stick: move window")
@@ -322,6 +325,8 @@ def keymap() -> dict:
               {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label},
               {"keys": ["Hold " + name(e.ABS_Z), "R-stick ←"], "action": "Previous workspace"},
               {"keys": ["Hold " + name(e.ABS_Z), "R-stick →"], "action": "Next workspace"},
+              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ↑"], "action": ZOOM_IN.label},
+              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ↓"], "action": ZOOM_OUT.label},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↑"], "action": "Volume up"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↓"], "action": "Volume down"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ←"], "action": NAV_BACK.label},
@@ -875,7 +880,7 @@ class Mapper:
                 time.monotonic() - self.trig_tapped.pop(code, -1.0) < DOUBLE_TAP_WINDOW:
             self.trig_consumed.add(code)
             self.fire(DOUBLE_TRIGGERS[code])
-            self.announce(f"{PARTS[code][1]} {PARTS[code][1]}", DOUBLE_TRIGGERS[code].label)
+            self.announce(f"{PARTS[code][1]} + {PARTS[code][1]}", DOUBLE_TRIGGERS[code].label)
             return
         if not now and code in self.trig_consumed:
             self.trig_consumed.discard(code)
@@ -1183,18 +1188,15 @@ class Mapper:
         self.acc[1] += ly * speed
         if self.window_mode(lx, ly, rx, ry, dt):
             pass                                # RT held: right stick resizes
-        elif self.trig[e.ABS_Z]:
-            # LT held: right stick sideways = workspaces.
-            self.step(rx, lambda: self.to_workspace("L2 + R-stick", PREV_WS),
-                      lambda: self.to_workspace("L2 + R-stick", NEXT_WS), WORKSPACE_REPEAT)
-        elif self.zoom_mode:
-            # LB + right stick: sideways = workspaces, up/down = zoom. The
-            # further-pushed direction wins, so a slightly diagonal push is one.
+        elif self.trig[e.ABS_Z] or self.zoom_mode:
+            # LT or LB + right stick: sideways = workspaces, up/down = text size.
+            # The further-pushed direction wins, so a slightly diagonal push is one.
+            layer = "L2 + R-stick" if self.trig[e.ABS_Z] else "L1 + R-stick"
             if abs(rx) > abs(ry):
-                self.step(rx, lambda: self.to_workspace("L1 + R-stick", PREV_WS),
-                          lambda: self.to_workspace("L1 + R-stick", NEXT_WS), WORKSPACE_REPEAT)
+                self.step(rx, lambda: self.to_workspace(layer, PREV_WS),
+                          lambda: self.to_workspace(layer, NEXT_WS), WORKSPACE_REPEAT)
             else:
-                self.step(ry, lambda: self.zoom(ZOOM_IN), lambda: self.zoom(ZOOM_OUT))
+                self.step(ry, lambda: self.zoom(ZOOM_IN, layer), lambda: self.zoom(ZOOM_OUT, layer))
         elif abs(ry) >= ZOOM_THRESHOLD and self.menu_open():
             self.step(ry, lambda: self.tap([e.KEY_UP]), lambda: self.tap([e.KEY_DOWN]))
         else:
@@ -1211,9 +1213,9 @@ class Mapper:
         if wrote:
             self.ui.syn()
 
-    def zoom(self, bind: Bind) -> None:
+    def zoom(self, bind: Bind, inputs: str) -> None:
         self.tap(bind.keys)
-        self.announce("L1 + R-stick", bind.label)
+        self.announce(inputs, bind.label)
 
     def step(self, v: float, negative, positive, repeat: float = ZOOM_REPEAT) -> None:
         # One action per push (up/left = negative), repeating every `repeat`

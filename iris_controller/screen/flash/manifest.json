@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "p4ulcristian.iris-controller-flash",
+  "name": "Controller flash",
+  "version": "1.0.0",
+  "author": "p4ulcristian",
+  "description": "Mid-screen flash of what iris-controller just did: the buttons pop in, then what they did. Summoned with { keys, action }; no keys = a message on its own.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Flash.qml"
+  }
+}

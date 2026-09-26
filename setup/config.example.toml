@@ -25,10 +25,10 @@
 # [labels]
 # "Close window" = "Quit"
 
-# What each press just did is shown: combos flash mid-screen ("L2 + □ ▸ Copy",
-# "L2 + R-stick ▸ Workspace 3"), plain presses get a short notification
-# ("□ → Enter", "D-pad → Up"). Both on by default.
-# [notify]
+# What each press just did flashes mid-screen: combos ("L2 + □ ▸ Copy",
+# "L2 + R-stick ▸ Workspace 3") and plain presses ("□ ▸ Enter", "D-pad ▸ Up").
+# Both on by default.
+# [flash]
 # combos = false
 # buttons = false
 

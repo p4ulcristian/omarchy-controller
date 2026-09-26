@@ -12,7 +12,7 @@ automatically, and handed back to the desktop when you leave it.
 
 ## What the buttons do
 
-The short version (full list in [KEYMAP.md](KEYMAP.md), or press the mic
+The short version (full list in [docs/KEYMAP.md](docs/KEYMAP.md), or press the mic
 button):
 
 | Input | Action |
@@ -60,11 +60,12 @@ sudo pacman -S python-evdev steam-devices
 
 ```sh
 git clone https://github.com/p4ulcristian/omarchy-controller ~/.local/share/omarchy-controller
-~/.local/share/omarchy-controller/install.sh
+~/.local/share/omarchy-controller/setup/install.sh
 ```
 
-The installer links the script to `~/.local/bin/iris-controller`, links the
-cheat sheet into `~/.config/omarchy/plugins/`, enables it in
+The installer puts a launcher at `~/.local/bin/iris-controller`, links the
+cheat sheet, the flash and the on-screen keyboard into
+`~/.config/omarchy/plugins/`, enables them in
 `~/.config/omarchy/shell.json`, and starts a systemd user service. Run it
 again after pulling updates.
 
@@ -87,7 +88,7 @@ game can't lose focus to a neighbouring monitor).
 
 ## Configuration
 
-Optional. Copy [config.example.toml](config.example.toml) to
+Optional. Copy [setup/config.example.toml](setup/config.example.toml) to
 `~/.config/iris-controller/config.toml`. It can:
 
 - make **R1** push-to-talk dictation with
@@ -96,19 +97,18 @@ Optional. Copy [config.example.toml](config.example.toml) to
 - make **R1 tap, then hold** talk to an Iris server: dictate, and on release
   the transcript is posted to Iris instead of typed,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
-- turn off the popups: a combo flashes in the middle of the screen (the
-  buttons pop in, then what they did: "L2 + □ ▸ Copy"), and a plain press
-  shows a short notification ("□ → Enter"), replacing the last one so
-  repeats don't stack. Combos and plain presses have separate switches.
+- turn off the flash: what each press did appears in the middle of the
+  screen (the buttons pop in, then what they did: "L2 + □ ▸ Copy",
+  "□ ▸ Enter"). Combos and plain presses have separate switches.
 - add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button, R2 + a D-pad direction,
   or a double tap on L2/R2, that run a command or send keys. They appear in the
   cheat sheet too.
 
-The bindings themselves are the tables at the top of `iris_controller.py`.
-After changing them, regenerate the keymap:
+The bindings themselves are the tables in
+`iris_controller/keymap/bindings.py`. After changing them, regenerate the keymap:
 
 ```sh
-XDG_CONFIG_HOME=/nonexistent python3 iris_controller.py --keymap > KEYMAP.md
+XDG_CONFIG_HOME=/nonexistent python3 -m iris_controller.core.main --keymap > docs/KEYMAP.md
 ```
 
 ## How it works
@@ -118,15 +118,33 @@ to a virtual mouse and keyboard through uinput. Window actions go through
 `hyprctl`. The kernel's DualSense driver does not report the mic button, so
 it is read from the raw HID report instead.
 
+A press travels device → core → output, and the keymap decides what it means:
+
+```
+iris_controller/
+├── core/           the brain: mapper (buttons, combos), sticks, the main
+│                   loop (main.py) and reading config.toml (config.py)
+├── device/         the controller: finder, touchpad, mic button
+├── keymap/         what each button does: bindings, your [[bind]]s, the keymap doc
+├── modes/          window (R2 held), game, talk (R1)
+├── output/         virtual mouse + keyboard, Hyprland commands
+└── screen/         what you see, each an Omarchy shell plugin:
+    ├── flash/      what a press just did, mid-screen
+    ├── help/       the cheat sheet (mic button)
+    └── keyboard/   the on-screen keyboard
+setup/              install.sh, the systemd service, config.example.toml
+docs/               KEYMAP.md
+```
+
 ## Uninstall
 
 ```sh
 systemctl --user disable --now iris-controller
 rm ~/.local/bin/iris-controller ~/.config/systemd/user/iris-controller.service
-rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-help
+rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-{help,flash,keyboard}
 ```
 
-Then remove `p4ulcristian.iris-controller-help` from the `plugins` list in
+Then remove those three from the `plugins` list in
 `~/.config/omarchy/shell.json`.
 
 ## License

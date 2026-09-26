@@ -4,12 +4,12 @@
   "name": "Controller cheat sheet",
   "version": "1.0.0",
   "author": "p4ulcristian",
-  "description": "Hold-to-peek overlay listing what each controller button does. Summoned by iris-controller with the live keymap as payload.",
+  "description": "Overlay, toggled by the mic button, listing what each controller button does. Summoned by iris-controller with the live keymap as payload.",
   "kinds": [
     "panel"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "panel": "ControllerHelp.qml"
+    "panel": "Help.qml"
   }
 }

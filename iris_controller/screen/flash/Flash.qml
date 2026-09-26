@@ -6,9 +6,9 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
-// Mid-screen flash of the combo iris-controller just fired. The buttons pop
-// in one after another, then what they did slides in, then it all fades.
-// Summoned again while showing, it starts over with the new combo.
+// Mid-screen flash of what iris-controller just did. The buttons pop in one
+// after another, then what they did slides in, then it all fades. Summoned
+// again while showing, it starts over. No keys = a message on its own.
 //   payload: { "keys": ["L2", "□"], "action": "Copy" }
 Item {
   id: root
@@ -19,7 +19,7 @@ Item {
   property int gen: 0          // bumps on every combo, restarting the animation
 
   readonly property color ink: Color.popups.text
-  readonly property color hud: Color.accent
+  readonly property color accent: Color.accent
   readonly property int stagger: 70     // ms between one key popping in and the next
 
   // PlayStation symbol colors.
@@ -50,10 +50,10 @@ Item {
   SequentialAnimation {
     id: show
     NumberAnimation { target: card; property: "opacity"; to: 1; duration: 90 }
-    PauseAnimation { duration: 1100 + root.keys.length * root.stagger }
+    PauseAnimation { duration: 550 + root.keys.length * root.stagger }
     ParallelAnimation {
-      NumberAnimation { target: card; property: "opacity"; to: 0; duration: 320; easing.type: Easing.InQuad }
-      NumberAnimation { target: card; property: "scale"; from: 1; to: 0.94; duration: 320; easing.type: Easing.InQuad }
+      NumberAnimation { target: card; property: "opacity"; to: 0; duration: 200; easing.type: Easing.InQuad }
+      NumberAnimation { target: card; property: "scale"; from: 1; to: 0.94; duration: 200; easing.type: Easing.InQuad }
     }
     ScriptAction { script: { root.opened = false; card.scale = 1 } }
   }
@@ -64,7 +64,7 @@ Item {
     screen: root.targetScreen
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "iris-controller-hud"
+    WlrLayershell.namespace: "iris-controller-flash"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
@@ -86,7 +86,7 @@ Item {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
-          strokeColor: Util.alpha(root.hud, 0.6); strokeWidth: 1.5
+          strokeColor: Util.alpha(root.accent, 0.6); strokeWidth: 1.5
           fillColor: Color.background
           PathSvg {
             path: "M " + card.cut + " 0 L " + card.width + " 0 L " + card.width + " " + (card.height - card.cut)
@@ -95,7 +95,7 @@ Item {
           }
         }
         ShapePath {
-          strokeColor: root.hud; strokeWidth: 4; fillColor: "transparent"
+          strokeColor: root.accent; strokeWidth: 4; fillColor: "transparent"
           capStyle: ShapePath.FlatCap
           PathSvg {
             path: "M " + (card.width - 44) + " 2 L " + (card.width - 2) + " 2 L " + (card.width - 2) + " 44 "
@@ -113,9 +113,9 @@ Item {
         opacity: 0
         gradient: Gradient {
           orientation: Gradient.Horizontal
-          GradientStop { position: 0; color: Util.alpha(root.hud, 0) }
-          GradientStop { position: 0.8; color: Util.alpha(root.hud, 0.22) }
-          GradientStop { position: 1; color: Util.alpha(root.hud, 0) }
+          GradientStop { position: 0; color: Util.alpha(root.accent, 0) }
+          GradientStop { position: 0.8; color: Util.alpha(root.accent, 0.22) }
+          GradientStop { position: 1; color: Util.alpha(root.accent, 0) }
         }
         Connections {
           target: root
@@ -153,7 +153,7 @@ Item {
             // One pressed button: pops in, flashes, settles.
             Rectangle {
               id: chip
-              readonly property color tint: root.symbolColor[modelData] || root.hud
+              readonly property color tint: root.symbolColor[modelData] || root.accent
               implicitWidth: chipText.implicitWidth + 32
               implicitHeight: 58
               radius: 3
@@ -206,11 +206,12 @@ Item {
 
         Text {
           id: arrow
+          visible: root.keys.length > 0
           anchors.verticalCenter: parent.verticalCenter
           text: "▸"
           font.family: Style.font.family
           font.pixelSize: 28
-          color: root.hud
+          color: root.accent
         }
 
         // What it did: slides in after the last key, letters spreading out.

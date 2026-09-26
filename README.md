@@ -30,11 +30,14 @@ button):
 | L2 + ✕ | Right click (hold = drag) |
 | L2 + right stick ←/→ | Previous / next workspace |
 | L2 + D-pad ↑/↓ | Volume up / down |
+| L2 + D-pad ←/→ | Back / forward (browsers, file managers) |
 | L2 + △ / □ / ○ | Close window / copy / paste |
 | L2 + R2 | Fullscreen |
 | R2 held + left stick | Move the window |
 | R2 held + right stick | Resize the window (→/↓ bigger, ←/↑ smaller) |
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
+| R2 + □ | Space (hold to repeat) |
+| R2 + ○ | On-screen keyboard: D-pad moves, ✕ types (hold to repeat), □ space, △ backspace, L1 held shift, ○ closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show / hide the cheat sheet |
 
@@ -89,10 +92,10 @@ Optional. Copy [config.example.toml](config.example.toml) to
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
-- turn off the popups: every press shows a short notification naming what
-  it did ("□ → Enter", "L2 + □ → Copy", "L2 + R-stick → Workspace 3"),
-  replacing the last one so repeats don't stack. Combos and plain presses
-  have separate switches.
+- turn off the popups: a combo flashes in the middle of the screen (the
+  buttons pop in, then what they did: "L2 + □ ▸ Copy"), and a plain press
+  shows a short notification ("□ → Enter"), replacing the last one so
+  repeats don't stack. Combos and plain presses have separate switches.
 - add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button, R2 + a D-pad direction,
   or a double tap on L2/R2, that run a command or send keys. They appear in the
   cheat sheet too.

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "p4ulcristian.iris-controller-keyboard",
+  "name": "Controller on-screen keyboard",
+  "version": "1.0.0",
+  "author": "p4ulcristian",
+  "description": "On-screen keyboard for iris-controller (R2 + ○). The controller keeps the layout and the highlight and types the keys; this only draws them.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Keyboard.qml"
+  }
+}

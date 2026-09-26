@@ -12,7 +12,6 @@ Press the mic button to toggle it as an overlay.
 | □ | Enter |
 | △ | Backspace |
 | L1 | Hold: combo layer |
-| R1 | Hold: dictate |
 | Left stick | Move pointer |
 | Right stick | Scroll |
 | Options | Omarchy menu |
@@ -21,8 +20,11 @@ Press the mic button to toggle it as an overlay.
 | L2 | Hold + ✕: right click |
 | L2 | Hold + right stick ←/→: previous / next workspace |
 | L2 | Hold + D-pad ↑/↓: volume up / down |
+| L2 | Hold + D-pad ←/→: back / forward |
 | R2 | Hold + left stick: move window |
 | R2 | Hold + right stick: resize window |
+| R2 | Hold + ○: on-screen keyboard |
+| R2 | Hold + □: space |
 | R2 | Dragging + right stick ←/→: take window to prev / next workspace |
 | D-pad | Arrow keys (hold to repeat) |
 | Touchpad | Swipe ↑/↓: volume up / down |
@@ -41,9 +43,13 @@ Press the mic button to toggle it as an overlay.
 | Hold L2 + R-stick → | Next workspace |
 | Hold L2 + D-pad ↑ | Volume up |
 | Hold L2 + D-pad ↓ | Volume down |
+| Hold L2 + D-pad ← | Back |
+| Hold L2 + D-pad → | Forward |
 | Hold R2 + Left stick | Move window |
 | Hold R2 + R-stick | Resize window (→/↓ bigger) |
 | Hold R2 + Left stick + R-stick ←/→ | Take window to prev / next workspace |
+| Hold R2 + ○ | On-screen keyboard |
+| Hold R2 + □ | Space |
 | Hold L2 + △ | Close window |
 | Hold L2 + □ | Copy |
 | Hold L2 + ○ | Paste |
@@ -51,7 +57,7 @@ Press the mic button to toggle it as an overlay.
 | Hold L1 + R-stick → | Next workspace |
 | Hold L1 + R-stick ↑ | Bigger text |
 | Hold L1 + R-stick ↓ | Smaller text |
-| Hold L1 + ✕ | Claude in ~/Work |
+| Hold L1 + ✕ | Terminal |
 | Hold L1 + △ | Close window |
 
 ## In the Omarchy menu

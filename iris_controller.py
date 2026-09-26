@@ -11,6 +11,7 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 from typing import NamedTuple
@@ -47,6 +48,12 @@ GAME_CLASSES = ("steam_app_", "gamescope")
 MENU_LAYERS = ("omarchy-menu",)   # keyboard-driven overlays: the right stick sends arrows
 MENU_CACHE = 0.25
 HELP_PLUGIN = "p4ulcristian.iris-controller-help"   # Omarchy shell plugin in overlay/
+OSK_PLUGIN = "p4ulcristian.iris-controller-keyboard"  # on-screen keyboard, in keyboard/
+HUD_PLUGIN = "p4ulcristian.iris-controller-hud"       # mid-screen combo flash, in hud/
+OSK_DELAY = 0.35            # D-pad held this long on the keyboard: the highlight starts repeating
+OSK_REPEAT = 0.08           # then one key every this many seconds
+# The keyboard overlay reports the pointer here: "hover R C", "leave", "down R C", "up".
+OSK_SOCK = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "iris-controller", "keyboard.sock")
 MIC_BIT = 0x04     # DualSense mic button: third button byte of the raw HID report
 
 CONFIG_PATH = os.path.join(
@@ -111,6 +118,9 @@ MOVE_NEXT_WS = 'hl.dsp.window.move({ workspace = "r+1" })'
 MOVE_PREV_WS = 'hl.dsp.window.move({ workspace = "r-1" })'
 RIGHT_CLICK = Bind([e.BTN_RIGHT], "Right click")                # LT + ✕
 FULLSCREEN = Bind([SUPER, e.KEY_F], "Fullscreen")               # LT + RT together
+# LT + D-pad ←/→: back / forward, as in browsers and file managers.
+NAV_BACK = Bind([ALT, e.KEY_LEFT], "Back")
+NAV_FORWARD = Bind([ALT, e.KEY_RIGHT], "Forward")
 # LT held + another button: one-shot chord. Copy/paste are Omarchy's universal
 # ones, so they work in terminals too.
 LT_COMBOS = {
@@ -202,12 +212,58 @@ load_binds()
 OUT_KEYS = sorted(
     {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, LT_COMBOS, DOUBLE_TRIGGERS, RT_DPAD)
      for b in m.values() for k in b.keys}
-    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
+    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, NAV_BACK, NAV_FORWARD, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
     | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}
     | {SUPER, SHIFT, CTRL, ALT, e.KEY_A, e.KEY_Z}
     | {e.BTN_LEFT, e.BTN_RIGHT, e.BTN_MIDDLE}
 )
+
+# On-screen keyboard (RT + ○): US layout, 15 units per row. Each key is
+# (label, shifted label, key code, width); key code None = a sticky modifier.
+def _chars(base: str, shifted: str, codes: list[str]) -> list:
+    return [(b, sh, getattr(e, "KEY_" + c), 1) for b, sh, c in zip(base, shifted, codes)]
+
+
+OSK_MODS = {"shift": SHIFT, "ctrl": CTRL, "alt": ALT}
+OSK_ROWS = [
+    _chars("`1234567890-=", "~!@#$%^&*()_+",
+           ["GRAVE", *"1234567890", "MINUS", "EQUAL"]) + [("⌫", "⌫", e.KEY_BACKSPACE, 2)],
+    [("Tab", "Tab", e.KEY_TAB, 1.5)]
+    + _chars("qwertyuiop[]", "QWERTYUIOP{}", [*"QWERTYUIOP", "LEFTBRACE", "RIGHTBRACE"])
+    + [("\\", "|", e.KEY_BACKSLASH, 1.5)],
+    [("Esc", "Esc", e.KEY_ESC, 1.75)]
+    + _chars("asdfghjkl;'", 'ASDFGHJKL:"', [*"ASDFGHJKL", "SEMICOLON", "APOSTROPHE"])
+    + [("⏎", "⏎", e.KEY_ENTER, 2.25)],
+    [("⇧", "⇧", None, 2.25)]
+    + _chars("zxcvbnm,./", "ZXCVBNM<>?", [*"ZXCVBNM", "COMMA", "DOT", "SLASH"])
+    + [("⇧", "⇧", None, 2.75)],
+    [("Ctrl", "Ctrl", None, 1.5), ("Alt", "Alt", None, 1.5), ("", "", e.KEY_SPACE, 8),
+     ("←", "←", e.KEY_LEFT, 1), ("↓", "↓", e.KEY_DOWN, 1), ("↑", "↑", e.KEY_UP, 1),
+     ("→", "→", e.KEY_RIGHT, 1)],
+]
+OSK_MOD_OF = {"⇧": "shift", "Ctrl": "ctrl", "Alt": "alt"}
+OUT_KEYS = sorted(set(OUT_KEYS) | {k[2] for row in OSK_ROWS for k in row if k[2]})
+# Characters the keyboard can type, for snippets: char -> (key code, shifted).
+OSK_CHARS = {" ": (e.KEY_SPACE, False)}
+for _row in OSK_ROWS:
+    for _label, _shifted, _code, _w in _row:
+        if _code and len(_label) == 1:
+            OSK_CHARS.setdefault(_label, (_code, False))
+            OSK_CHARS.setdefault(_shifted, (_code, True))
+# A top row of text snippets: selected with ✕, the whole text is typed.
+# [keyboard] snippets = [...] in the config replaces these.
+OSK_SNIPPETS = CONFIG.get("keyboard", {}).get(
+    "snippets", ["https://", "www.", ".com", "@", "~/"])
+if OSK_SNIPPETS:
+    OSK_ROWS.insert(0, [(t, t, t, 15 / len(OSK_SNIPPETS)) for t in OSK_SNIPPETS])
+
+
+def osk_center(row: list, col: int) -> float:
+    """Middle of a key along its row, in units: to go up/down to the nearest key."""
+    x = sum(k[3] for k in row[:col])
+    return x + row[col][3] / 2
+
 
 # Where each input sits on the pad: an id the overlay drawing knows, and the name
 # printed in text.
@@ -249,8 +305,11 @@ def keymap() -> dict:
     add("dpad", "Arrow keys (hold to repeat)")
     add(e.ABS_Z, "Hold + right stick ←/→: previous / next workspace")
     add(e.ABS_Z, "Hold + D-pad ↑/↓: volume up / down")
+    add(e.ABS_Z, "Hold + D-pad ←/→: back / forward")
     add(e.ABS_RZ, "Hold + left stick: move window")
     add(e.ABS_RZ, "Hold + right stick: resize window")
+    add(e.ABS_RZ, "Hold + ○: on-screen keyboard")
+    add(e.ABS_RZ, "Hold + □: space")
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
@@ -265,10 +324,14 @@ def keymap() -> dict:
               {"keys": ["Hold " + name(e.ABS_Z), "R-stick →"], "action": "Next workspace"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↑"], "action": "Volume up"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↓"], "action": "Volume down"},
+              {"keys": ["Hold " + name(e.ABS_Z), "D-pad ←"], "action": NAV_BACK.label},
+              {"keys": ["Hold " + name(e.ABS_Z), "D-pad →"], "action": NAV_FORWARD.label},
               {"keys": ["Hold " + name(e.ABS_RZ), "Left stick"], "action": "Move window"},
               {"keys": ["Hold " + name(e.ABS_RZ), "R-stick"], "action": "Resize window (→/↓ bigger)"},
               {"keys": ["Hold " + name(e.ABS_RZ), "Left stick", "R-stick ←/→"],
                "action": "Take window to prev / next workspace"}]
+    combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(e.BTN_EAST)], "action": "On-screen keyboard"})
+    combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(ENTER_BTN)], "action": "Space"})
     combos += [{"keys": ["Hold " + name(e.ABS_RZ), "D-pad " + DPAD_ARROWS[d]], "action": b.label}
                for d, b in RT_DPAD.items()]
     combos += [{"keys": ["Hold " + name(e.ABS_Z), name(c)], "action": b.label}
@@ -431,6 +494,16 @@ class Mapper:
         self.enter_first: float | None = None   # first □ press, waiting for a second one
         self.zoom_next = 0.0                    # when the next zoom/arrow step may fire
         self.resize_acc = [0.0, 0.0]            # RT + right stick: px not yet sent
+        self.osk_open = False                   # on-screen keyboard showing (RT + ○)
+        self.osk_pos = [len(OSK_ROWS) - 3, 1]   # highlighted key: row, column (starts on "a")
+        self.osk_mods: set[str] = set()         # sticky modifiers armed for the next key
+        self.osk_shift_held = False             # L1 held on the keyboard: shift
+        self.osk_next = 0.0                     # when a held D-pad moves the highlight again
+        self.osk_aim = False                    # ✕ types the highlight (pointer on a key / D-pad used)
+        self.osk_x_typing = False               # this ✕ press is typing, so its release is ours too
+        self.shell_calls = threading.Condition()  # omarchy-shell calls waiting, per overlay
+        self.shell_pending: dict[str, list[str]] = {}
+        threading.Thread(target=self.shell_sender, daemon=True).start()
         self.dragged = False                    # this RT hold has dragged: right stick = workspaces
         self.resized = False                    # this RT hold has resized (announced once)
         self.resize_next = 0.0                  # when the next resize may be sent
@@ -517,8 +590,15 @@ class Mapper:
 
     def announce(self, inputs: str, action: str, plain: bool = False) -> None:
         # Names what just fired. The cheat sheet's notes ("(hold = drag)") are dropped.
-        if BUTTON_NOTIFY if plain else COMBO_NOTIFY:
-            notify(f"{inputs} → {LABELS.get(action, action.split(' (')[0])}")
+        action = LABELS.get(action, action.split(" (")[0])
+        if plain:
+            if BUTTON_NOTIFY:
+                notify(f"{inputs} → {action}")
+        elif COMBO_NOTIFY:
+            # Combos flash mid-screen: the buttons pop in, then what they did.
+            keys = [k.removeprefix("Hold ") for k in inputs.split(" + ")]
+            self.shell_send(HUD_PLUGIN, ["summon", HUD_PLUGIN,
+                                         json.dumps({"keys": keys, "action": action})])
 
     def hold(self, owner, combo: list[int]) -> None:
         self.btn_owner[owner] = combo
@@ -531,6 +611,8 @@ class Mapper:
 
     def release_all(self) -> None:
         self.enter_first = None
+        if self.osk_open:
+            self.osk_toggle(False)
         self.trig_pending.clear()
         self.mic_down = False
         if self.help_open:
@@ -678,6 +760,19 @@ class Mapper:
         if self.paused:
             return
 
+        if down and code == e.BTN_EAST and self.rt_held():
+            self.osk_toggle(not self.osk_open)   # RT + ○: on-screen keyboard
+            self.announce("R2 + ○", "Keyboard " + ("on" if self.osk_open else "off"))
+            return
+        if code == e.BTN_WEST and not down:
+            self.unhold("rt_space")               # let go of an RT + □ space, if it was one
+        if down and code == e.BTN_WEST and self.rt_held():
+            self.hold("rt_space", [e.KEY_SPACE])  # RT + □: space, held so it repeats
+            self.announce("R2 + □", "Space")
+            return
+        if self.osk_open and self.osk_button(code, down):
+            return
+
         if down and self.guide_since is not None:
             self.guide_fired = True
             if code in GUIDE_COMBOS:
@@ -813,6 +908,11 @@ class Mapper:
         self.hat[axis] = value
         if self.paused:
             return
+        if self.osk_open:
+            if value and value != prev:
+                self.osk_move(axis, value)       # keyboard open: D-pad moves the highlight
+                self.osk_next = time.monotonic() + OSK_DELAY
+            return
         # D-pad = arrow keys, held while the direction is, so they autorepeat.
         names = ("left", "right") if axis == "x" else ("up", "down")
         if value != prev:
@@ -821,6 +921,10 @@ class Mapper:
             if value and self.rt_held() and arrow in RT_DPAD:
                 self.fire(RT_DPAD[arrow])        # RT held: the D-pad runs user binds
                 self.announce("R2 + D-pad " + DPAD_ARROWS[arrow], RT_DPAD[arrow].label)
+            elif value and self.trig[e.ABS_Z] and axis == "x":
+                nav = NAV_BACK if value < 0 else NAV_FORWARD   # LT held: ←/→ = back / forward
+                self.tap(nav.keys)
+                self.announce("L2 + D-pad " + DPAD_ARROWS[arrow], nav.label)
             elif value and axis == "y" and self.trig[e.ABS_Z]:
                 # LT held: ↑/↓ = volume, held so Omarchy's binding repeats it.
                 self.hold(("hat", axis), VOLUME_UP if value < 0 else VOLUME_DOWN)
@@ -828,6 +932,144 @@ class Mapper:
             elif value:
                 self.hold(("hat", axis), [ARROWS[arrow]])
                 self.announce("D-pad", arrow.capitalize(), plain=True)
+
+    # --- on-screen keyboard ---------------------------------------------------
+
+    def osk_toggle(self, show: bool) -> None:
+        self.osk_open = show
+        self.osk_aim = show
+        self.osk_mods.clear()
+        self.unhold("osk")
+        if show:
+            rows = [[{"label": k[0], "shift": k[1], "w": k[3]} for k in row] for row in OSK_ROWS]
+            self.osk_send(["summon", OSK_PLUGIN, json.dumps({"rows": rows, **self.osk_state()})])
+        else:
+            self.osk_send(["hide", OSK_PLUGIN])
+
+    def osk_state(self) -> dict:
+        mods = self.osk_mods | ({"shift"} if self.osk_shift_held else set())
+        return {"row": self.osk_pos[0], "col": self.osk_pos[1], "mods": sorted(mods)}
+
+    def osk_update(self) -> None:
+        self.osk_send(["call", OSK_PLUGIN, "update", json.dumps(self.osk_state())])
+
+    def osk_send(self, args: list[str]) -> None:
+        self.shell_send(OSK_PLUGIN, args)
+
+    def shell_send(self, plugin: str, args: list[str]) -> None:
+        # Hand the call to shell_sender; per overlay only the newest pending one
+        # matters, except that a state update never replaces a summon / hide.
+        with self.shell_calls:
+            old = self.shell_pending.get(plugin)
+            if args[0] != "call" or not old or old[0] == "call":
+                self.shell_pending[plugin] = args
+            self.shell_calls.notify()
+
+    def shell_sender(self) -> None:
+        # One omarchy-shell call at a time, so each overlay sees them in order.
+        while True:
+            with self.shell_calls:
+                while not self.shell_pending:
+                    self.shell_calls.wait()
+                plugin = next(iter(self.shell_pending))
+                args = self.shell_pending.pop(plugin)
+            subprocess.run(["omarchy-shell", "-q", "shell", *args],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+    def osk_move(self, axis: str, value: int) -> None:
+        r, c = self.osk_pos
+        if axis == "x":
+            c = (c + value) % len(OSK_ROWS[r])
+        else:
+            x = osk_center(OSK_ROWS[r], c)
+            r = min(max(r + value, 0), len(OSK_ROWS) - 1)
+            c = min(range(len(OSK_ROWS[r])), key=lambda i: abs(osk_center(OSK_ROWS[r], i) - x))
+        self.osk_pos = [r, c]
+        self.osk_aim = True
+        self.osk_update()
+
+    def osk_button(self, code, down: bool) -> bool:
+        # Buttons while the keyboard shows. True = handled here.
+        if code == e.BTN_TL:
+            self.osk_shift_held = down           # L1 held = shift
+            self.osk_update()
+            return True
+        if code == e.BTN_EAST:
+            if down:
+                self.osk_toggle(False)            # ○ closes the keyboard
+            return True
+        if code == e.BTN_WEST:
+            self.unhold("osk")
+            if down:
+                self.hold("osk", [e.KEY_SPACE])   # □ = space
+            return True
+        if code != e.BTN_SOUTH:
+            return False                          # △ backspace and the rest, as usual
+        # ✕ types the highlighted key while aiming at the keyboard; otherwise
+        # it stays a click (and LT + ✕ a right click), to reach a text field.
+        if down:
+            self.osk_x_typing = self.osk_aim and not self.trig[e.ABS_Z]
+        if not self.osk_x_typing:
+            return False
+        self.osk_press(down)
+        return True
+
+    def osk_press(self, down: bool) -> None:
+        # The highlighted key goes down (held, so it autorepeats) or up.
+        self.unhold("osk")
+        if not down:
+            return
+        label, _, key, _ = OSK_ROWS[self.osk_pos[0]][self.osk_pos[1]]
+        if key is None:                           # a modifier key: arm / disarm it
+            self.osk_mods ^= {OSK_MOD_OF[label]}
+        elif isinstance(key, str):                # a snippet: type its text
+            self.osk_type(key)
+            self.osk_mods.clear()
+        else:                                     # held, so it autorepeats; mods are one-shot
+            mods = self.osk_mods | ({"shift"} if self.osk_shift_held else set())
+            self.hold("osk", [OSK_MODS[m] for m in sorted(mods)] + [key])
+            self.osk_mods.clear()
+        self.osk_update()
+
+    def osk_line(self, line: str) -> None:
+        # A report from the keyboard overlay: the pointer over a key, off it,
+        # or a real mouse button on a key.
+        parts = line.split()
+        if not self.osk_open or not parts:
+            return
+        if parts[0] in ("hover", "down") and len(parts) == 3:
+            try:
+                r, c = int(parts[1]), int(parts[2])
+                OSK_ROWS[r][c]
+            except (ValueError, IndexError):
+                return
+            self.osk_aim = True
+            if [r, c] != self.osk_pos:
+                self.osk_pos = [r, c]
+                self.osk_update()
+            if parts[0] == "down":
+                self.osk_press(True)
+        elif parts[0] == "up":
+            self.osk_press(False)
+        elif parts[0] == "leave":
+            self.osk_aim = False
+
+    def osk_type(self, text: str) -> None:
+        for ch in text:
+            if ch not in OSK_CHARS:
+                log.warning("keyboard snippet: can't type %r", ch)
+                continue
+            code, shifted = OSK_CHARS[ch]
+            self.tap([SHIFT, code] if shifted else [code])
+
+    def osk_tick(self) -> None:
+        # A held D-pad keeps moving the highlight.
+        if not self.osk_open or time.monotonic() < self.osk_next:
+            return
+        for axis in ("x", "y"):
+            if self.hat[axis]:
+                self.osk_move(axis, self.hat[axis])
+                self.osk_next = time.monotonic() + OSK_REPEAT
 
     def rt_held(self) -> bool:
         # RT down as window mode: not still a possible fullscreen chord / double
@@ -931,6 +1173,7 @@ class Mapper:
             return
         self.check_triggers()
         self.check_enter()
+        self.osk_tick()
         lx, ly = self.curve(self.axes.get(e.ABS_X, 0.0), self.axes.get(e.ABS_Y, 0.0))
         rx, ry = self.curve(self.axes.get(e.ABS_RX, 0.0), self.axes.get(e.ABS_RY, 0.0))
 
@@ -1017,6 +1260,18 @@ def main() -> int:
     ui = UInput(caps, name="iris-controller")
     m = Mapper(ui)
     sel = selectors.DefaultSelector()
+    # The keyboard overlay connects here to report the pointer on its keys.
+    os.makedirs(os.path.dirname(OSK_SOCK), exist_ok=True)
+    try:
+        os.unlink(OSK_SOCK)
+    except FileNotFoundError:
+        pass
+    osk_server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    osk_server.bind(OSK_SOCK)
+    osk_server.listen()
+    osk_server.setblocking(False)
+    sel.register(osk_server, selectors.EVENT_READ, "osk-server")
+    osk_buffers: dict[socket.socket, bytes] = {}
     last_tick = time.monotonic()
     last_game = 0.0
     last_scan = 0.0
@@ -1039,6 +1294,31 @@ def main() -> int:
 
             for keyobj, _ in sel.select(timeout=TICK):
                 dev = keyobj.fileobj
+                if keyobj.data == "osk-server":
+                    try:
+                        conn, _ = osk_server.accept()
+                    except OSError:
+                        continue
+                    conn.setblocking(False)
+                    sel.register(conn, selectors.EVENT_READ, "osk-conn")
+                    osk_buffers[conn] = b""
+                    continue
+                if keyobj.data == "osk-conn":
+                    try:
+                        data = dev.recv(4096)
+                    except BlockingIOError:
+                        continue
+                    except OSError:
+                        data = b""
+                    if not data:                  # the overlay went away (shell restart)
+                        sel.unregister(dev)
+                        dev.close()
+                        osk_buffers.pop(dev, None)
+                        continue
+                    *lines, osk_buffers[dev] = (osk_buffers[dev] + data).split(b"\n")
+                    for line in lines:
+                        m.osk_line(line.decode(errors="replace"))
+                    continue
                 try:
                     if isinstance(dev, int):
                         m.on_hid(os.read(dev, 128))

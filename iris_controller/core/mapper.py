@@ -60,7 +60,7 @@ class Mapper:
         self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
         self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
         self.hat = {"x": 0, "y": 0}
-        self.l1_held = False                  # L1 held: right stick zooms
+        self.l1_held = False                  # L1 held: layer for user L1 combos
         self.enter_first: float | None = None   # first □ press, waiting for a second one
         self.grabbed = False
         self.mouse_focus_user = hyprland.mouse_focus_option()   # restored whenever we let go
@@ -185,7 +185,7 @@ class Mapper:
             return
         # A layer held + a button with no combo on it: dropped, not the plain
         # action. L2 + ✕ (right click) and the stick clicks aren't combos.
-        layer = ("PS" if self.game.ps_held else "L1" if self.l1_held
+        layer = ("PS" if self.game.ps_held else "L1" if self.l1_held and L1_COMBOS
                  else "L2" if self.trig[e.ABS_Z] and code != e.BTN_SOUTH else None)
         if down and layer and code in PARTS and \
                 code not in (e.BTN_TL, e.BTN_THUMBL, e.BTN_THUMBR):
@@ -196,8 +196,7 @@ class Mapper:
             self.on_enter(down)
             return
         if code == e.BTN_TL:
-            self.l1_held = down        # right stick zooms instead of scrolling
-            self.sticks.next_step = 0.0
+            self.l1_held = down
             return
 
         if not down:

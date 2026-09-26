@@ -37,7 +37,8 @@ def keymap() -> dict:
         add(e.BTN_TR, "Hold: dictate")
     if IRIS_URL:
         add(e.BTN_TR, "Tap, then hold: talk to Iris (release to send)")
-    add(e.BTN_TL, "Hold: combo layer")
+    if L1_COMBOS:
+        add(e.BTN_TL, "Hold: combo layer")
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
     add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Arrow keys (hold to repeat)")
@@ -81,10 +82,6 @@ def keymap() -> dict:
                for c, b in L2_COMBOS.items()]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
                for c, b in PS_COMBOS.items()]
-    combos += [{"keys": ["Hold " + name(e.BTN_TL), "R-stick ←"], "action": "Previous workspace"},
-               {"keys": ["Hold " + name(e.BTN_TL), "R-stick →"], "action": "Next workspace"},
-               {"keys": ["Hold " + name(e.BTN_TL), "R-stick ↑"], "action": ZOOM_IN.label},
-               {"keys": ["Hold " + name(e.BTN_TL), "R-stick ↓"], "action": ZOOM_OUT.label}]
     combos += [{"keys": ["Hold " + name(e.BTN_TL), name(c)], "action": b.label}
                for c, b in L1_COMBOS.items()]
     menu = [{"keys": ["D-pad", "R-stick"], "action": "Move through the list"},

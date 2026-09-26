@@ -27,10 +27,9 @@ BASE_HOLD = {
     e.BTN_WEST: Bind([e.KEY_ENTER], "Enter"),                     # □
     e.BTN_NORTH: Bind([e.KEY_BACKSPACE], "Backspace"),            # △
 }
-# One-shot chords on press.
+# One-shot chords on press. Create is free.
 BASE_TAP = {
     e.BTN_START: Bind([SUPER, e.KEY_SPACE], "Omarchy menu"),      # Options
-    e.BTN_SELECT: Bind([SUPER, e.KEY_W], "Close window"),         # Create
 }
 ENTER_BTN = e.BTN_WEST      # □: Enter, double tap = Ctrl+Enter
 ENTER_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # □ twice
@@ -49,19 +48,18 @@ L2_COMBOS = {
     e.BTN_WEST: Bind([SUPER, e.KEY_C], "Copy"),                   # □
     e.BTN_EAST: Bind([SUPER, e.KEY_V], "Paste"),                  # ○
 }
-ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # L1 + right stick
+ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # L2 + right stick
 ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
-# L1 or L2 + right stick sideways: next/previous workspace on the focused
+# L2 + right stick sideways: next/previous workspace on the focused
 # monitor (empty ones too).
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
-# Empty: combos live on L1, the PS button only toggles game mode.
+# Empty: the PS button only toggles game mode.
 PS_COMBOS: dict[int, Bind] = {}
-# L1 held + another button: one-shot chord.
-L1_COMBOS = {
-    e.BTN_NORTH: Bind([SUPER, e.KEY_W], "Close window"),          # △
-}
+# L1 held + another button: one-shot chord. Empty: user binds only
+# ("L1 + ○" in [[bind]]); until then L1 isn't a layer.
+L1_COMBOS: dict[int, Bind] = {}
 # Touchpad swipe up/down: the media keys, so Omarchy's volume binding and OSD apply.
 VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}

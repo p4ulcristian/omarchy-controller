@@ -23,10 +23,6 @@ button):
 | D-pad | Arrow keys (hold to repeat) |
 | Touchpad | Tap: arrow key toward the side you touch (click and hold to repeat), swipe up/down: volume |
 | Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
-| Create | Close window |
-| L1 + right stick ←/→ | Previous / next workspace |
-| L1 + right stick ↑/↓ | Bigger / smaller text |
-| L1 + △ | Close window |
 | L2 + ✕ | Right click (hold = drag) |
 | L2 + right stick ←/→ | Previous / next workspace |
 | L2 + right stick ↑/↓ | Bigger / smaller text |

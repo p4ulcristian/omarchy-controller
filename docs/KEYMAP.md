@@ -11,11 +11,9 @@ Press the mic button to toggle it as an overlay.
 | ○ | Escape |
 | □ | Enter |
 | △ | Backspace |
-| L1 | Hold: combo layer |
 | Left stick | Move pointer |
 | Right stick | Scroll |
 | Options | Omarchy menu |
-| Create | Close window |
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
 | L2 | Hold + right stick ←/→: previous / next workspace |
@@ -58,11 +56,6 @@ Press the mic button to toggle it as an overlay.
 | Hold L2 + △ | Close window |
 | Hold L2 + □ | Copy |
 | Hold L2 + ○ | Paste |
-| Hold L1 + R-stick ← | Previous workspace |
-| Hold L1 + R-stick → | Next workspace |
-| Hold L1 + R-stick ↑ | Bigger text |
-| Hold L1 + R-stick ↓ | Smaller text |
-| Hold L1 + △ | Close window |
 
 ## In the Omarchy menu
 

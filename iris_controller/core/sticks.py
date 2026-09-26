@@ -1,4 +1,4 @@
-"""The sticks, every tick: left moves the pointer, right scrolls. With L1 or
+"""The sticks, every tick: left moves the pointer, right scrolls. With
 L2 held the right stick switches workspaces (sideways) or changes the text
 size (up/down); in the Omarchy menu it moves through the list; with R2 held
 it belongs to window mode."""
@@ -46,10 +46,10 @@ class Sticks:
         self.acc[1] += ly * speed
         if m.window.update(lx, ly, rx, ry, dt):
             pass                                # R2 held: right stick resizes
-        elif m.trig[e.ABS_Z] or m.l1_held:
-            # L2 or L1 + right stick: sideways = workspaces, up/down = text size.
+        elif m.trig[e.ABS_Z]:
+            # L2 + right stick: sideways = workspaces, up/down = text size.
             # The further-pushed direction wins, so a slightly diagonal push is one.
-            layer = "L2 + R-stick" if m.trig[e.ABS_Z] else "L1 + R-stick"
+            layer = "L2 + R-stick"
             if abs(rx) > abs(ry):
                 self.step(rx, lambda: self.to_workspace(layer, PREV_WS),
                           lambda: self.to_workspace(layer, NEXT_WS), WORKSPACE_REPEAT)

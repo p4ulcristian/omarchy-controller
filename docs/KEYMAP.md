@@ -11,6 +11,7 @@ Press the mic button to toggle it as an overlay.
 | ○ | Escape |
 | □ | Enter |
 | △ | Backspace |
+| R1 | Twice: on-screen keyboard |
 | Left stick | Move pointer |
 | Right stick | Scroll |
 | Options | Omarchy menu |
@@ -22,7 +23,6 @@ Press the mic button to toggle it as an overlay.
 | L2 | Hold + D-pad ←/→: back / forward |
 | R2 | Hold + left stick: move window |
 | R2 | Hold + right stick: resize window |
-| R2 | Twice: on-screen keyboard |
 | R2 | Hold + □: space |
 | R2 | Hold + △: refresh |
 | R2 | Dragging + right stick ←/→: take window to prev / next workspace |
@@ -36,7 +36,7 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
-| R2 + R2 | On-screen keyboard |
+| R1 + R1 | On-screen keyboard |
 | L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
 | Hold L2 + R-stick ← | Previous workspace |

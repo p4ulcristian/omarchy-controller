@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
-// On-screen keyboard for iris-controller (R2 twice). The controller owns the
+// On-screen keyboard for iris-controller (R1 twice). The controller owns the
 // layout, the highlight and the typing; this draws them and reports the
 // pointer over the keys back on keyboard.sock ("hover R C", "leave",
 // "down R C", "up"). It never takes keyboard focus, so keys land in the

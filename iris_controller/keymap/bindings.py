@@ -64,11 +64,9 @@ L1_COMBOS: dict[int, Bind] = {}
 VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}
 
-# L2/R2 double tap. R2 twice opens / closes the on-screen keyboard, unless
-# [[bind]] takes "R2 double"; L2 double is for user binds.
+# L2/R2 double tap: user binds only ("R2 double" / "L2 double" in [[bind]]).
 # An R2 double tap makes every R2 hold wait DOUBLE_TAP_WINDOW before it counts.
-KEYBOARD = Bind([], "On-screen keyboard")
-DOUBLE_TRIGGERS: dict[int, Bind] = {e.ABS_RZ: KEYBOARD}
+DOUBLE_TRIGGERS: dict[int, Bind] = {}
 # R2 held + D-pad direction: user binds only ("R2 + ↑" in [[bind]]).
 R2_DPAD: dict[str, Bind] = {}
 DPAD_ARROWS = {"up": "↑", "right": "→", "down": "↓", "left": "←"}

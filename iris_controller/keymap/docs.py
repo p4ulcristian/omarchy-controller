@@ -7,7 +7,7 @@ from evdev import ecodes as e
 
 from ..core.config import LABELS
 from ..modes.talk import DICTATE_SOCK, IRIS_URL
-from .bindings import (DOUBLE_TRIGGERS, KEYBOARD, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
+from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ZOOM_IN,
                        ZOOM_OUT, BASE_HOLD, BASE_TAP, DPAD_ARROWS)
 
@@ -39,6 +39,7 @@ def keymap() -> dict:
         add(e.BTN_TR, "Tap, then hold: talk to Iris (release to send)")
     if L1_COMBOS:
         add(e.BTN_TL, "Hold: combo layer")
+    add(e.BTN_TR, "Twice: on-screen keyboard")
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
     add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Arrow keys (hold to repeat)")
@@ -48,7 +49,6 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold + D-pad ←/→: back / forward")
     add(e.ABS_RZ, "Hold + left stick: move window")
     add(e.ABS_RZ, "Hold + right stick: resize window")
-    add(e.ABS_RZ, "Twice: on-screen keyboard")
     add(e.ABS_RZ, "Hold + □: space")
     add(e.ABS_RZ, "Hold + △: refresh")
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
@@ -57,6 +57,7 @@ def keymap() -> dict:
     add("mic", "Show this cheat sheet (any button closes it)")
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
+              {"keys": [name(e.BTN_TR), name(e.BTN_TR)], "action": "On-screen keyboard"},
               *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
               {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label},
               {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label},
@@ -149,7 +150,7 @@ def cheatsheet() -> dict:
             row([sq], "Enter"), row([ci], "Escape"), row([tr], "Backspace"),
             row([sq, sq], ENTER_DOUBLE.label),
             row([R2, sq], "Space"),
-            row([R2, R2], "On-screen keyboard")]},
+            row(["R1", "R1"], "On-screen keyboard")]},
         {"title": "Edit & browse", "rows": [
             row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
             row([L2, ci], L2_COMBOS[e.BTN_EAST].label),
@@ -173,7 +174,7 @@ def cheatsheet() -> dict:
             row(["Mic"], "This sheet")]},
     ]
     own = ([row([R2, "D-pad " + DPAD_ARROWS[d]], b.label) for d, b in R2_DPAD.items()]
-           + [row([name(c), name(c)], b.label) for c, b in DOUBLE_TRIGGERS.items() if b is not KEYBOARD]
+           + [row([name(c), name(c)], b.label) for c, b in DOUBLE_TRIGGERS.items()]
            + [row([name(e.BTN_TL), name(c)], b.label) for c, b in L1_COMBOS.items()]
            + [row([name(e.BTN_MODE), name(c)], b.label) for c, b in PS_COMBOS.items()])
     if own:

@@ -35,7 +35,7 @@ button):
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
 | R2 + △ | Refresh (Ctrl + R) |
 | R2 + □ | Space (hold to repeat) |
-| R2 twice | On-screen keyboard: D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, L1 held shift, ○ closes |
+| R1 twice | On-screen keyboard: D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, L1 held shift, ○ closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show the cheat sheet (any button closes it) |
 

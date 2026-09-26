@@ -1,7 +1,8 @@
 """R1: talk. Held = push-to-talk dictation through a Unix socket that takes
 "start" and "stop" (omarchy-dictation). Tap, then hold = dictate, and on
 release post the transcript to an Iris server instead of typing it; that
-needs the socket to also take "stop-return"."""
+needs the socket to also take "stop-return". Tapped twice = the on-screen
+keyboard opens / closes."""
 
 from __future__ import annotations
 
@@ -66,10 +67,12 @@ class Talk:
         self.active: str | None = None          # "dictate" or "iris" while R1 is held
         self.r1_down = 0.0                      # when R1 went down
         self.r1_tapped = -1.0                   # when a quick R1 tap ended: a press soon after talks to Iris
+        self.second = False                     # this press came right after a tap: a quick release = keyboard
 
     def press(self) -> None:
         now = time.monotonic()
         self.r1_down = now
+        self.second = now - self.r1_tapped < DOUBLE_TAP_WINDOW
         if IRIS_URL and now - self.r1_tapped < DOUBLE_TAP_WINDOW:
             self.r1_tapped = -1.0
             self.active = "iris"                 # sent to Iris on release
@@ -82,12 +85,20 @@ class Talk:
 
     def release(self) -> None:
         active, self.active = self.active, None
-        if active == "iris":
+        quick = time.monotonic() - self.r1_down < DOUBLE_TAP_WINDOW
+        second, self.second = self.second, False
+        # A quick tap may start a double tap; the second one never starts another.
+        self.r1_tapped = time.monotonic() if quick and not second else -1.0
+        if second and quick:                     # tap, tap: the keyboard, nothing said
+            if active:
+                dictate("stop")
+            kb = self.m.keyboard
+            kb.toggle(not kb.open)
+            self.m.flash.show("R1 + R1", "Keyboard " + ("on" if kb.open else "off"))
+        elif active == "iris":
             threading.Thread(target=self.send_to_iris, daemon=True).start()
         elif active == "dictate":
             dictate("stop")   # a quick tap is shorter than dictation's minimum: ignored
-            if time.monotonic() - self.r1_down < DOUBLE_TAP_WINDOW:
-                self.r1_tapped = time.monotonic()
 
     def stop(self) -> None:
         if self.active:

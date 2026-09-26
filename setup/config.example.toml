@@ -16,7 +16,7 @@
 # secret_file = "~/path/to/.env"
 # secret_key = "IRIS_INTERNAL_SECRET"
 
-# The on-screen keyboard (R2 double tap) has a top row of extras: pick one and ✕
+# The on-screen keyboard (R1 twice) has a top row of extras: pick one and ✕
 # types the whole text, or presses the shortcut. These replace the defaults;
 # [] hides the row.
 # [keyboard]
@@ -42,7 +42,7 @@
 
 # Your own buttons. Each [[bind]] adds one; they show up in the cheat sheet.
 #   input: "L1 + <button>", "PS + <button>", "R2 + <D-pad ↑ → ↓ ←>",
-#          "R2 double" (instead of the on-screen keyboard) or "L2 double"
+#          "R2 double" or "L2 double" (an R2 double tap delays every R2 hold by 0.25 s)
 #          buttons: ✕ ○ □ △ (or x o square triangle), L1 R1 L2 R2 L3 R3,
 #          Options, Create, PS
 #   run:   a shell command, or keys = "SUPER + W" to send a key combo

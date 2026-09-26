@@ -1,4 +1,4 @@
-"""On-screen keyboard (R2 double tap). The controller keeps the layout and the
+"""On-screen keyboard (R1 twice). The controller keeps the layout and the
 highlight and types the keys; Keyboard.qml next to this file only draws them,
 and reports the real pointer on its keys back over a socket."""
 

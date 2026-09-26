@@ -116,7 +116,7 @@ LT_COMBOS = {
 }
 ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # LB + right stick
 ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
-# LB + right stick or LT + D-pad sideways: next/previous workspace on the focused
+# LB or LT + right stick sideways: next/previous workspace on the focused
 # monitor (empty ones too).
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
@@ -235,7 +235,7 @@ def keymap() -> dict:
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
     add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Arrow keys (hold to repeat)")
-    add(e.ABS_Z, "Hold + D-pad ←/→: previous / next workspace")
+    add(e.ABS_Z, "Hold + right stick ←/→: previous / next workspace")
     add(e.ABS_Z, "Hold + D-pad ↑/↓: volume up / down")
     add(e.ABS_RZ, "Hold + left stick: move window")
     add(e.ABS_RZ, "Hold + right stick: resize window")
@@ -249,8 +249,8 @@ def keymap() -> dict:
               *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
               {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label},
               {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label},
-              {"keys": ["Hold " + name(e.ABS_Z), "D-pad ←"], "action": "Previous workspace"},
-              {"keys": ["Hold " + name(e.ABS_Z), "D-pad →"], "action": "Next workspace"},
+              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ←"], "action": "Previous workspace"},
+              {"keys": ["Hold " + name(e.ABS_Z), "R-stick →"], "action": "Next workspace"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↑"], "action": "Volume up"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↓"], "action": "Volume down"},
               {"keys": ["Hold " + name(e.ABS_RZ), "Left stick"], "action": "Move window"},
@@ -759,9 +759,7 @@ class Mapper:
         names = ("left", "right") if axis == "x" else ("up", "down")
         if value != prev:
             self.unhold(("hat", axis))
-            if value and axis == "x" and self.trig[e.ABS_Z]:
-                hypr_dispatch(PREV_WS if value < 0 else NEXT_WS)   # LT held: ←/→ = workspaces
-            elif value and self.trig[e.ABS_Z]:
+            if value and axis == "y" and self.trig[e.ABS_Z]:
                 # LT held: ↑/↓ = volume, held so Omarchy's binding repeats it.
                 self.hold(("hat", axis), VOLUME_UP if value < 0 else VOLUME_DOWN)
             elif value:
@@ -863,6 +861,10 @@ class Mapper:
         self.acc[1] += ly * speed
         if self.window_mode(lx, ly, rx, ry, dt):
             pass                                # RT held: right stick resizes
+        elif self.trig[e.ABS_Z]:
+            # LT held: right stick sideways = workspaces.
+            self.step(rx, lambda: hypr_dispatch(PREV_WS), lambda: hypr_dispatch(NEXT_WS),
+                      WORKSPACE_REPEAT)
         elif self.zoom_mode:
             # LB + right stick: sideways = workspaces, up/down = zoom. The
             # further-pushed direction wins, so a slightly diagonal push is one.

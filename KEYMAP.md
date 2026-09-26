@@ -19,7 +19,7 @@ Press the mic button to toggle it as an overlay.
 | Create | Close window |
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
-| L2 | Hold + D-pad ←/→: previous / next workspace |
+| L2 | Hold + right stick ←/→: previous / next workspace |
 | L2 | Hold + D-pad ↑/↓: volume up / down |
 | R2 | Hold + left stick: move window |
 | R2 | Hold + right stick: resize window |
@@ -38,8 +38,8 @@ Press the mic button to toggle it as an overlay.
 | R2 + R2 | Open Iris |
 | L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
-| Hold L2 + D-pad ← | Previous workspace |
-| Hold L2 + D-pad → | Next workspace |
+| Hold L2 + R-stick ← | Previous workspace |
+| Hold L2 + R-stick → | Next workspace |
 | Hold L2 + D-pad ↑ | Volume up |
 | Hold L2 + D-pad ↓ | Volume down |
 | Hold R2 + Left stick | Move window |

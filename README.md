@@ -28,7 +28,7 @@ button):
 | L1 + right stick ↑/↓ | Bigger / smaller text |
 | L1 + ✕ / △ | Terminal / close window |
 | L2 + ✕ | Right click (hold = drag) |
-| L2 + D-pad ←/→ | Previous / next workspace |
+| L2 + right stick ←/→ | Previous / next workspace |
 | L2 + D-pad ↑/↓ | Volume up / down |
 | L2 + △ / □ / ○ | Close window / copy / paste |
 | L2 + R2 | Fullscreen |

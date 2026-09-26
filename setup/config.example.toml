@@ -5,7 +5,7 @@
 # (https://github.com/p4ulcristian/omarchy-dictation), or any daemon whose Unix socket
 # accepts "start" and "stop". Unset = R1 does nothing.
 # [dictate]
-# socket = "/run/user/1000/justsay/justsay.sock"
+# socket = "/run/user/1000/iris-dictation/iris-dictation.sock"
 
 # R1 tap, then hold = dictate and send the transcript to an Iris server instead
 # of typing it. Needs the dictate socket above to also accept "stop-return"

@@ -25,7 +25,7 @@ Item {
   readonly property int sheetW: 1900
   readonly property int pad: 40
 
-  // Controller photo: anchors are in its 1000 x 703 box, placed mid-sheet.
+  // Controller drawing: anchors are in its 1000 x 703 box, placed mid-sheet.
   readonly property real padScale: 0.7
   readonly property real padX: (sheetW - 1000 * padScale) / 2
   readonly property real padY: 96
@@ -56,8 +56,8 @@ Item {
     "dpad": [150, 190], "lstick": [330, 330], "mic": [485, 380]
   })
   readonly property var anchorsRight: ({
-    "r2": [820, 10], "r1": [872, 42], "options": [733, 80], "triangle": [810, 115],
-    "circle": [885, 190], "square": [738, 190], "cross": [810, 262],
+    "r2": [820, 10], "r1": [872, 42], "options": [733, 80], "triangle": [842, 115],
+    "circle": [917, 190], "square": [738, 222], "cross": [842, 262],
     "rstick": [670, 330], "ps": [505, 318]
   })
 
@@ -431,14 +431,14 @@ Item {
           }
         }
 
-        // The controller: Sony's product photo, fetched by install.sh (not in
-        // the repo), shown in a 1000 x 703 box the anchors are measured in.
+        // The controller: our own flat drawing (dualsense.svg, no logos),
+        // shown in a 1000 x 703 box the anchors are measured in.
         Image {
           x: root.padX
           y: root.padY
           width: 1000 * root.padScale
           height: 703 * root.padScale
-          source: "dualsense.png"
+          source: "dualsense.svg"
           fillMode: Image.PreserveAspectFit
           smooth: true
           mipmap: true

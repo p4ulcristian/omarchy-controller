@@ -77,6 +77,9 @@ if EXTRAS:
 # Each row's keys share its 15 units evenly.
 ROWS = [[(b, sh, code, 15 / len(row)) for b, sh, code, _ in row] for row in ROWS]
 
+SLASH = next((r, c) for r, row in enumerate(ROWS) for c, k in enumerate(row) if k[0] == "/")
+
+
 def center(row: list, col: int) -> float:
     """Middle of a key along its row, in units: to go up/down to the nearest key."""
     x = sum(k[3] for k in row[:col])
@@ -87,7 +90,7 @@ class OnScreenKeyboard:
     def __init__(self, m) -> None:
         self.m = m
         self.open = False
-        self.pos = [len(ROWS) - 3, 0]           # highlighted key: row, column (starts on "a")
+        self.pos = list(SLASH)                  # highlighted key: row, column (starts on "/")
         self.shift_held = False                 # R1 held on the keyboard: shift
         self.next = 0.0                         # when a held D-pad moves the highlight again
         self.aim = False                        # ✕ types the highlight (pointer on a key / D-pad used)

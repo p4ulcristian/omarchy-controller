@@ -35,7 +35,7 @@ button):
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
 | R2 + △ | Refresh (Ctrl + R) |
 | R2 + □ | Space (hold to repeat) |
-| L1 held | On-screen keyboard while held: D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, R1 held shift; let go of L1 to hide it. L1 twice keeps it open; L1 again or ○ closes it |
+| L1 held | On-screen keyboard while held: right stick or D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, R1 held shift; let go of L1 to hide it. L1 twice keeps it open; L1 again or ○ closes it |
 | Tap PS | App launcher: the Omarchy launcher's apps as tiles; D-pad or left stick moves, ✕ opens, ○ or PS closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show the cheat sheet (any button closes it) |

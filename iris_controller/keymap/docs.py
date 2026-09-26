@@ -37,6 +37,7 @@ def keymap() -> dict:
         add(e.BTN_TR, "Hold: dictate")
     add(e.BTN_TL, "Hold: on-screen keyboard")
     add(e.BTN_TL, "Twice: keep the keyboard open (L1 again closes it)")
+    add("rstick", "On-screen keyboard: move between keys")
     if L1_COMBOS:
         add(e.BTN_TL, "Hold: combo layer")
     add(e.BTN_MODE, "Tap: app launcher (D-pad / left stick move, ✕ opens, ○ closes)")
@@ -149,7 +150,8 @@ def cheatsheet() -> dict:
             row([sq, sq], ENTER_DOUBLE.label),
             row([R2, sq], "Space"),
             row(["L1 hold"], "On-screen keyboard"),
-            row(["L1", "L1"], "Keep keyboard open")]},
+            row(["L1", "L1"], "Keep keyboard open"),
+            row(["L1 hold", "R-stick"], "Pick a key")]},
         {"title": "Edit & browse", "rows": [
             row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
             row([L2, ci], L2_COMBOS[e.BTN_EAST].label),

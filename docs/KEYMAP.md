@@ -15,6 +15,7 @@ Press the mic button to toggle it as an overlay.
 | L1 | Twice: keep the keyboard open (L1 again closes it) |
 | Left stick | Move pointer |
 | Right stick | Scroll |
+| Right stick | On-screen keyboard: move between keys |
 | Options | Omarchy menu |
 | PS | Tap: app launcher (D-pad / left stick move, ✕ opens, ○ closes) |
 | PS | Hold 1 s: game mode on/off |

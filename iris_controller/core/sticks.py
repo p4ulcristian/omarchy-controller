@@ -2,7 +2,8 @@
 L2 held the right stick switches workspaces (sideways) or changes the text
 size (up/down); in the Omarchy menu it moves through the list; with R2 held
 it belongs to window mode. While the app launcher shows, the left stick
-steps through its tiles."""
+steps through its tiles; while the on-screen keyboard shows, the right
+stick steps through its keys."""
 
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from evdev import ecodes as e
 from ..keymap.bindings import ZOOM_IN, ZOOM_OUT, Bind
 from ..output import hyprland
 from ..screen.flash import flash
+from ..screen.keyboard.keyboard import DELAY as KEY_DELAY, REPEAT as KEY_REPEAT
 
 DEADZONE = 0.15
 POINTER_MAX = 1500.0         # px/s at full stick
@@ -37,7 +39,7 @@ class Sticks:
         self.m = m
         self.acc = [0.0, 0.0, 0.0, 0.0]         # dx, dy, wheel_v, wheel_h not yet sent
         self.next_step = 0.0                    # when the next zoom/arrow/workspace step may fire
-        self.step_dir = 0                       # which way the stick is pushed for steps, 0 = not
+        self.step_dir = 0                       # which way the stick is pushed for steps: (axis, ±1), 0 = not
 
     def update(self, dt: float) -> None:
         m = self.m
@@ -49,7 +51,7 @@ class Sticks:
             # further-pushed direction wins; the pointer stays put.
             axis, v = ("x", lx) if abs(lx) > abs(ly) else ("y", ly)
             self.step(v, lambda: m.launcher.move(axis, -1), lambda: m.launcher.move(axis, 1),
-                      WORKSPACE_REPEAT, WORKSPACE_DELAY)
+                      WORKSPACE_REPEAT, WORKSPACE_DELAY, axis)
             return
         speed = POINTER_MAX * dt
         self.acc[0] += lx * speed
@@ -65,6 +67,12 @@ class Sticks:
                           lambda: self.to_workspace(layer, 1), WORKSPACE_REPEAT, WORKSPACE_DELAY)
             else:
                 self.step(ry, lambda: self.zoom(ZOOM_IN, layer), lambda: self.zoom(ZOOM_OUT, layer))
+        elif m.keyboard.open:
+            # The on-screen keyboard: the right stick steps the highlight like
+            # the D-pad, the further-pushed direction wins.
+            axis, v = ("x", rx) if abs(rx) > abs(ry) else ("y", ry)
+            self.step(v, lambda: m.keyboard.move(axis, -1), lambda: m.keyboard.move(axis, 1),
+                      KEY_REPEAT, KEY_DELAY, axis)
         elif abs(ry) >= ZOOM_THRESHOLD and hyprland.menu_open():
             self.step(ry, lambda: m.out.tap([e.KEY_UP]), lambda: m.out.tap([e.KEY_DOWN]))
         else:
@@ -82,15 +90,15 @@ class Sticks:
             m.out.syn()
 
     def step(self, v: float, negative, positive, repeat: float = ZOOM_REPEAT,
-             delay: float | None = None) -> None:
+             delay: float | None = None, axis: str = "") -> None:
         # One action per push (up/left = negative), like a held key: after
         # `delay` seconds it repeats every `repeat` seconds while the stick
-        # stays pushed. Pushing the other way starts over at once.
+        # stays pushed. Pushing another way (or along another axis) starts over at once.
         if abs(v) < ZOOM_THRESHOLD:
             self.step_dir = 0
             return
         now = time.monotonic()
-        way = -1 if v < 0 else 1
+        way = (axis, -1 if v < 0 else 1)
         if way != self.step_dir:
             self.step_dir = way
             self.next_step = now + (repeat if delay is None else delay)
@@ -98,7 +106,7 @@ class Sticks:
             self.next_step = now + repeat
         else:
             return
-        (negative if way < 0 else positive)()
+        (negative if way[1] < 0 else positive)()
 
     def zoom(self, bind: Bind, inputs: str) -> None:
         self.m.out.tap(bind.keys)

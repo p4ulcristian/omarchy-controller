@@ -32,6 +32,7 @@ from ..screen.shell import Shell
 from .sticks import Sticks
 
 log = logging.getLogger("iris-controller")
+GUIDE_STICK = 0.3         # a stick pushed this far counts as using it (hides the guide)
 
 TRIGGER_ON, TRIGGER_OFF = 0.5, 0.3
 CHORD_WINDOW = 0.06         # L2 within this of R2 = fullscreen
@@ -60,6 +61,7 @@ class Mapper:
         self.ranges: dict[int, tuple[int, int]] = {}
         self.trig = {e.ABS_Z: False, e.ABS_RZ: False}
         self.trig_since = {e.ABS_Z: 0.0, e.ABS_RZ: 0.0}  # when each trigger went down, for the guide
+        self.guide_used = False                   # something else pressed while a trigger is held: guide off
         self.trig_pending: dict[int, float] = {}  # trigger -> press time, action not sent yet
         self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
         self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
@@ -156,6 +158,8 @@ class Mapper:
             return
         if self.paused:
             return
+        if down:
+            self.guide_used = True
         out, flash = self.out, self.flash
 
         # The cheat sheet closes on any button, and that press does nothing else.
@@ -313,10 +317,16 @@ class Mapper:
     def check_guide(self) -> None:
         # One trigger held on its own for guide.DELAY: show what can follow
         # it at its side. R2 counts only as window mode (not a fullscreen chord).
+        # It goes away once anything else is used (button, D-pad, stick), until
+        # the trigger is let go.
         l2, r2 = self.trig[e.ABS_Z], self.trig[e.ABS_RZ]
+        if not l2 and not r2:
+            self.guide_used = False
+        elif any(abs(self.axes.get(a, 0.0)) > GUIDE_STICK for a in (e.ABS_X, e.ABS_Y, e.ABS_RX, e.ABS_RY)):
+            self.guide_used = True
         held = e.ABS_Z if l2 and not r2 else e.ABS_RZ if r2 and not l2 and self.r2_held() else None
         side = None
-        if held is not None and not self.keyboard.open and not self.help.open \
+        if held is not None and not self.guide_used and not self.keyboard.open and not self.help.open \
                 and time.monotonic() - self.trig_since[held] >= guide.DELAY:
             side = "left" if held == e.ABS_Z else "right"
         self.guide.update(side)
@@ -332,6 +342,8 @@ class Mapper:
         self.hat[axis] = value
         if self.paused:
             return
+        if value:
+            self.guide_used = True
         if value and self.help.open:
             self.help.show(False)                # any D-pad press closes the cheat sheet
             return

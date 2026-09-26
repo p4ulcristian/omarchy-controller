@@ -38,7 +38,6 @@ PRECISION = 0.3
 SCROLL_MAX = 2400.0          # hi-res wheel units/s (120 = one notch)
 TRIGGER_ON, TRIGGER_OFF = 0.5, 0.3
 DOUBLE_TAP_WINDOW = 0.25    # second ✕ within this = Ctrl+Enter; a single ✕ waits this long
-CHORD_WINDOW = 0.06         # both triggers within this = fullscreen, not clicks
 ZOOM_THRESHOLD = 0.5         # right stick deflection that counts as a zoom step
 ZOOM_REPEAT = 0.2           # seconds between zoom steps while the stick stays pushed
 WORKSPACE_REPEAT = 0.4      # seconds between workspace steps while the stick stays pushed
@@ -103,18 +102,15 @@ BASE_TAP = {
 }
 ENTER_BTN = e.BTN_WEST      # □: Enter, double tap = Ctrl+Enter
 ENTER_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # □ twice
-FULLSCREEN = Bind([SUPER, e.KEY_F], "Fullscreen")               # LT + RT together
-# RT is push-to-talk to Iris if configured (see talk_to_iris); LT holds these keys.
-TRIGGER_ACTION = {e.ABS_Z: Bind([SUPER, e.BTN_LEFT], "move window (left stick)")}
+# RT is push-to-talk to Iris if configured (see talk_to_iris). LT is a modifier:
+# held, it turns ✕ into the right mouse button.
+RIGHT_CLICK = Bind([e.BTN_RIGHT], "Right click")                # LT + ✕
 IRIS_TALK = "talk to Iris (release to send)"
 ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # LB + right stick
 ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
 # LB + right stick sideways: next/previous workspace on the focused monitor (empty ones too).
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
-# LT + right stick sideways: take the window along to the next/previous workspace.
-MOVE_NEXT_WS = 'hl.dsp.window.move({ workspace = "r+1" })'
-MOVE_PREV_WS = 'hl.dsp.window.move({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
 # Empty: combos live on L1, the PS button only toggles game mode.
 GUIDE_COMBOS: dict[int, Bind] = {}
@@ -183,9 +179,9 @@ def load_binds() -> None:
 load_binds()
 
 OUT_KEYS = sorted(
-    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, TRIGGER_ACTION, DOUBLE_TRIGGERS)
+    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, DOUBLE_TRIGGERS)
      for b in m.values() for k in b.keys}
-    | {k for b in (ENTER_DOUBLE, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
+    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
     | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}
     | {SUPER, SHIFT, CTRL, ALT, e.KEY_A, e.KEY_Z}
@@ -231,8 +227,7 @@ def keymap() -> dict:
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
     if IRIS_URL:
         add(e.ABS_RZ, "Hold: " + IRIS_TALK)
-    add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
-    add(e.ABS_Z, "+ R-stick ←/→: window to prev / next workspace")
+    add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Focus window that way")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
@@ -241,7 +236,7 @@ def keymap() -> dict:
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
               *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
-              {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label}]
+              {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label}]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
                for c, b in GUIDE_COMBOS.items()]
     combos += [{"keys": ["Hold " + name(e.BTN_TL), "R-stick ←"], "action": "Previous workspace"},
@@ -409,7 +404,6 @@ class Mapper:
         self.swipe_axis: str | None = None      # "x"/"y" once the swipe has a direction, "click" if clicked
         self.click_pending = False              # pad pressed; zone decided at the end of the report
         self.touch_since = 0.0                  # when the finger landed, for taps
-        self.moved_by_trigger = False           # LT still down after a workspace move
         self.touching = False
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
         self.mic_down = False
@@ -425,7 +419,6 @@ class Mapper:
         self.trig_pending: dict[int, float] = {}  # trigger -> press time, action not sent yet
         self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
         self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
-        self.trig_chord = False                   # both fired together; ignore until both up
         self.hat = {"x": 0, "y": 0}
         self.precision = False
         self.zoom_mode = False                  # LB held: right stick zooms
@@ -701,6 +694,8 @@ class Mapper:
                 dictate("start")
         elif code == e.BTN_SOUTH and self.menu_open():
             self.hold(code, [e.KEY_ENTER])   # ✕ confirms in the menu instead of clicking
+        elif code == e.BTN_SOUTH and self.trig[e.ABS_Z]:
+            self.hold(code, RIGHT_CLICK.keys)   # LT held: ✕ is the right button (hold = drag)
         elif code in BASE_HOLD:
             self.hold(code, BASE_HOLD[code].keys)
         elif code in BASE_TAP:
@@ -747,7 +742,6 @@ class Mapper:
         if now == was:
             return
         self.trig[code] = now
-        other = e.ABS_Z if code == e.ABS_RZ else e.ABS_RZ
         if now and code in DOUBLE_TRIGGERS and \
                 time.monotonic() - self.trig_tapped.pop(code, -1.0) < DOUBLE_TAP_WINDOW:
             self.trig_consumed.add(code)
@@ -755,44 +749,28 @@ class Mapper:
             return
         if not now and code in self.trig_consumed:
             self.trig_consumed.discard(code)
-            if not any(self.trig.values()):
-                self.trig_chord = False
             return
+        if code == e.ABS_Z and code not in DOUBLE_TRIGGERS:
+            return                        # LT is only a modifier (see on_button)
         if now:
-            # Hold the action back for CHORD_WINDOW so both triggers can become fullscreen.
-            if self.trig_pending.pop(other, None) is not None:
-                self.trig_chord = True
-                self.tap(FULLSCREEN.keys)
-            elif not self.trig_chord:
-                self.trig_pending[code] = time.monotonic()
+            self.trig_pending[code] = time.monotonic()   # started in check_triggers
             return
         if self.trig_pending.pop(code, None) is not None:
             self.trig_tapped[code] = time.monotonic()   # a quick tap: maybe half a double tap
-            if code in TRIGGER_ACTION:
-                self.tap(TRIGGER_ACTION[code].keys)   # released before the window: plain click
         elif code == e.ABS_RZ:
             if self.btn_owner.pop("iris", None) is not None:
                 threading.Thread(target=talk_to_iris, daemon=True).start()
-        else:
-            self.unhold(("trig", code))
-        if code == e.ABS_Z:
-            self.moved_by_trigger = False
-        if not any(self.trig.values()):
-            self.trig_chord = False
 
     def check_triggers(self) -> None:
         now = time.monotonic()
         for code, since in list(self.trig_pending.items()):
             # With a double tap bound, wait out the double-tap window before the
             # hold starts, so the first tap of a double doesn't begin a hold.
-            if now - since >= (DOUBLE_TAP_WINDOW if code in DOUBLE_TRIGGERS else CHORD_WINDOW):
+            if now - since >= (DOUBLE_TAP_WINDOW if code in DOUBLE_TRIGGERS else 0.0):
                 del self.trig_pending[code]
-                if code == e.ABS_RZ:
-                    if IRIS_URL:
-                        self.btn_owner["iris"] = []   # released in on_abs
-                        dictate("start")
-                else:
-                    self.hold(("trig", code), TRIGGER_ACTION[code].keys)
+                if code == e.ABS_RZ and IRIS_URL:
+                    self.btn_owner["iris"] = []   # released in on_abs
+                    dictate("start")
 
     def on_hat(self, axis: str, value: int) -> None:
         prev = self.hat[axis]
@@ -856,11 +834,7 @@ class Mapper:
         speed = POINTER_MAX * (PRECISION if self.precision else 1.0) * dt
         self.acc[0] += lx * speed
         self.acc[1] += ly * speed
-        if ("trig", e.ABS_Z) in self.btn_owner or self.moved_by_trigger:
-            # LT held: right stick sideways takes the window to another workspace.
-            self.step(rx, lambda: self.move_window(MOVE_PREV_WS),
-                      lambda: self.move_window(MOVE_NEXT_WS), WORKSPACE_REPEAT)
-        elif self.zoom_mode:
+        if self.zoom_mode:
             # LB + right stick: sideways = workspaces, up/down = zoom. The
             # further-pushed direction wins, so a slightly diagonal push is one.
             if abs(rx) > abs(ry):
@@ -883,14 +857,6 @@ class Mapper:
                 wrote = True
         if wrote:
             self.ui.syn()
-
-    def move_window(self, dispatch: str) -> None:
-        # Let go of the Super+drag first: a window can't change workspace
-        # mid-drag. Press LT again to drag it on the new workspace.
-        self.unhold(("trig", e.ABS_Z))
-        self.moved_by_trigger = True
-        subprocess.run(["hyprctl", "dispatch", dispatch],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
     def step(self, v: float, negative, positive, repeat: float = ZOOM_REPEAT) -> None:
         # One action per push (up/left = negative), repeating every `repeat`

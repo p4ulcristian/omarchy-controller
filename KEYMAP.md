@@ -12,6 +12,7 @@ Press the mic button to toggle it as an overlay.
 | □ | Enter |
 | △ | Backspace |
 | L1 | Hold: combo layer |
+| R1 | Hold: dictate |
 | Left stick | Move pointer |
 | Left stick | Press: middle click |
 | Right stick | Scroll |
@@ -19,8 +20,8 @@ Press the mic button to toggle it as an overlay.
 | Options | Omarchy menu |
 | Create | Close window |
 | PS | Hold 1 s: game mode on/off |
-| L2 | Hold: move window (left stick) |
-| L2 | + R-stick ←/→: window to prev / next workspace |
+| L2 | Hold + ✕: right click |
+| R2 | Hold: talk to Iris (release to send) |
 | D-pad | Focus window that way |
 | Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Tap: arrow key toward that side |
@@ -32,12 +33,13 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
-| L2 + R2 | Fullscreen |
+| R2 + R2 | Open Iris |
+| Hold L2 + ✕ | Right click |
 | Hold L1 + R-stick ← | Previous workspace |
 | Hold L1 + R-stick → | Next workspace |
 | Hold L1 + R-stick ↑ | Bigger text |
 | Hold L1 + R-stick ↓ | Smaller text |
-| Hold L1 + ✕ | Terminal |
+| Hold L1 + ✕ | Claude in ~/Work |
 | Hold L1 + △ | Close window |
 
 ## In the Omarchy menu

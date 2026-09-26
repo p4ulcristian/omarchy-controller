@@ -27,8 +27,7 @@ button):
 | L1 + right stick ←/→ | Previous / next workspace |
 | L1 + right stick ↑/↓ | Bigger / smaller text |
 | L1 + ✕ / △ | Terminal / close window |
-| L2 held | Move the window with the left stick; right stick ←/→ takes it to the previous / next workspace |
-| L2 + R2 | Fullscreen |
+| L2 + ✕ | Right click (hold = drag) |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show / hide the cheat sheet |
 

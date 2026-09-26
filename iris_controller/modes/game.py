@@ -1,5 +1,6 @@
 """Game mode: let go of the controller so games see it. Automatic while a
-Steam game or gamescope is fullscreen; holding the PS button toggles it by hand."""
+Steam game or gamescope is fullscreen; holding the PS button toggles it by hand.
+A tap on PS opens the app launcher instead."""
 
 from __future__ import annotations
 
@@ -29,11 +30,15 @@ class GameMode:
 
     def ps(self, down: bool) -> None:
         # The PS button is a layer for PS_COMBOS; held alone it toggles game
-        # mode (see tick). A tap on its own does nothing.
+        # mode (see tick). A tap on its own opens / closes the app launcher,
+        # on release, once it can't be a hold any more.
         if down:
             self.ps_since, self.ps_used = time.monotonic(), False
-        else:
-            self.ps_since = None
+            return
+        tapped = self.ps_since is not None and not self.ps_used
+        self.ps_since = None
+        if tapped and not self.on:
+            self.m.launcher.toggle(not self.m.launcher.open)
 
     @property
     def ps_held(self) -> bool:

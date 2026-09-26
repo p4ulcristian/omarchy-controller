@@ -35,7 +35,8 @@ button):
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
 | R2 + △ | Refresh (Ctrl + R) |
 | R2 + □ | Space (hold to repeat) |
-| R1 twice | On-screen keyboard: D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, L1 held shift, ○ closes |
+| L1 held | On-screen keyboard while held: D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, R1 held shift; let go of L1 to hide it. L1 twice keeps it open; L1 again or ○ closes it |
+| Tap PS | App launcher: the Omarchy launcher's apps as tiles; D-pad or left stick moves, ✕ opens, ○ or PS closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show the cheat sheet (any button closes it) |
 
@@ -60,7 +61,7 @@ git clone https://github.com/p4ulcristian/omarchy-controller ~/.local/share/omar
 ```
 
 The installer puts a launcher at `~/.local/bin/iris-controller`, links the
-cheat sheet, the flash, the guide and the on-screen keyboard into
+cheat sheet, the flash, the guide, the on-screen keyboard and the app launcher into
 `~/.config/omarchy/plugins/`, enables them in
 `~/.config/omarchy/shell.json`, and starts a systemd user service. Run it
 again after pulling updates.
@@ -90,8 +91,6 @@ Optional. Copy [setup/config.example.toml](setup/config.example.toml) to
 - make **R1** push-to-talk dictation with
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
-- make **L1 held** talk to an Iris server: dictate, and on release the
-  transcript is posted to Iris instead of typed; **L1 twice** opens Iris,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
 - turn off the flash: what each press did appears in the middle of the
   screen (the buttons pop in, then what they did: "L2 + □ ▸ Copy",
@@ -124,13 +123,14 @@ iris_controller/
 │                   loop (main.py) and reading config.toml (config.py)
 ├── device/         the controller: finder, touchpad, mic button
 ├── keymap/         what each button does: bindings, your [[bind]]s, the keymap doc
-├── modes/          window (R2 held), game, talk (R1, L1)
+├── modes/          window (R2 held), game, talk (R1)
 ├── output/         virtual mouse + keyboard, Hyprland commands
 └── screen/         what you see, each an Omarchy shell plugin:
     ├── flash/      what a press just did, mid-screen
     ├── guide/      what can follow a held L2 / R2, at its side
     ├── help/       the cheat sheet (mic button)
-    └── keyboard/   the on-screen keyboard
+    ├── keyboard/   the on-screen keyboard
+    └── launcher/   the app launcher (tap PS)
 setup/              install.sh, the systemd service, config.example.toml
 docs/               KEYMAP.md
 ```
@@ -140,7 +140,7 @@ docs/               KEYMAP.md
 ```sh
 systemctl --user disable --now iris-controller
 rm ~/.local/bin/iris-controller ~/.config/systemd/user/iris-controller.service
-rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-{help,flash,guide,keyboard}
+rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-{help,flash,guide,keyboard,launcher}
 ```
 
 Then remove those four from the `plugins` list in

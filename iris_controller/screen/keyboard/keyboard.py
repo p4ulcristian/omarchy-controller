@@ -1,4 +1,4 @@
-"""On-screen keyboard (R1 twice). The controller keeps the layout and the
+"""On-screen keyboard (L1 held, or L1 twice to keep it). The controller keeps the layout and the
 highlight and types the keys; Keyboard.qml next to this file only draws them,
 and reports the real pointer on its keys back over a socket."""
 
@@ -14,7 +14,7 @@ import time
 from evdev import ecodes as e
 
 from ...core.config import CONFIG
-from ...keymap.bindings import SHIFT
+from ...keymap.bindings import DOUBLE_TAP_WINDOW, SHIFT
 from ...keymap.user_binds import parse_keys
 
 log = logging.getLogger("iris-controller")
@@ -28,7 +28,7 @@ SOCK = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "iris-controller"
 
 # US layout, top to bottom: symbols, numbers, letters, space. Each key is
 # (label, shifted label, key code, width); a string key code = a snippet to
-# type, a list = a shortcut to press. Shift is L1, held.
+# type, a list = a shortcut to press. Shift is R1, held.
 def _chars(base: str, shifted: str, codes: list[str]) -> list:
     return [(b, sh, getattr(e, "KEY_" + c), 1) for b, sh, c in zip(base, shifted, codes)]
 
@@ -88,20 +88,46 @@ class OnScreenKeyboard:
         self.m = m
         self.open = False
         self.pos = [len(ROWS) - 3, 0]           # highlighted key: row, column (starts on "a")
-        self.shift_held = False                 # L1 held on the keyboard: shift
+        self.shift_held = False                 # R1 held on the keyboard: shift
         self.next = 0.0                         # when a held D-pad moves the highlight again
         self.aim = False                        # ✕ types the highlight (pointer on a key / D-pad used)
         self.x_typing = False                   # this ✕ press is typing, so its release is ours too
+        self.kept = False                       # L1 tapped twice: stays open without holding
+        self.l1_down = 0.0                      # when L1 went down
+        self.l1_tapped = -1.0                   # when a quick L1 tap ended: a press soon after keeps it
 
     def toggle(self, show: bool) -> None:
         self.open = show
         self.aim = show
+        self.shift_held = False
+        if not show:
+            self.kept = False
         self.m.out.unhold("osk")
         if show:
             rows = [[{"label": k[0], "shift": k[1], "w": k[3]} for k in row] for row in ROWS]
             self.send(["summon", PLUGIN, json.dumps({"rows": rows, **self.state()})])
         else:
             self.send(["hide", PLUGIN])
+
+    def l1(self, down: bool) -> None:
+        """L1 held shows the keyboard until release; tapped twice it stays
+        (another L1 press, or ○, closes it)."""
+        now = time.monotonic()
+        if down:
+            if self.kept:
+                self.toggle(False)
+                self.l1_tapped = -1.0
+                return
+            self.kept = now - self.l1_tapped < DOUBLE_TAP_WINDOW
+            self.l1_down = now
+            if not self.open:
+                self.toggle(True)
+            if self.kept:
+                self.m.flash.show("L1 + L1", "Keyboard stays")
+        elif not self.kept:
+            quick = now - self.l1_down < DOUBLE_TAP_WINDOW
+            self.l1_tapped = now if quick else -1.0
+            self.toggle(False)
 
     def state(self) -> dict:
         return {"row": self.pos[0], "col": self.pos[1], "mods": ["shift"] if self.shift_held else []}
@@ -133,7 +159,9 @@ class OnScreenKeyboard:
     def button(self, code, down: bool) -> bool:
         # Buttons while the keyboard shows. True = handled here.
         if code == e.BTN_TL:
-            self.shift_held = down               # L1 held = shift
+            return False                          # L1 up: the mapper hides the keyboard
+        if code == e.BTN_TR and not self.m.talk.active:   # not while dictating
+            self.shift_held = down               # R1 held = shift
             self.update()
             return True
         if code == e.BTN_EAST:

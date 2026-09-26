@@ -28,6 +28,7 @@ from ..screen.guide import guide
 from ..screen.guide.guide import Guide
 from ..screen.help.help import Help
 from ..screen.keyboard.keyboard import OnScreenKeyboard
+from ..screen.launcher.launcher import Launcher
 from ..screen.shell import Shell
 from .sticks import Sticks
 
@@ -46,6 +47,7 @@ class Mapper:
         self.guide = Guide(self.shell)
         self.help = Help()
         self.keyboard = OnScreenKeyboard(self)
+        self.launcher = Launcher(self)
         self.touchpad = Touchpad(self)
         self.mic = Mic()
         self.sticks = Sticks(self)
@@ -121,6 +123,8 @@ class Mapper:
         self.enter_first = None
         if self.keyboard.open:
             self.keyboard.toggle(False)
+        if self.launcher.open:
+            self.launcher.toggle(False)
         self.trig_pending.clear()
         self.mic.down = False
         if self.help.open:
@@ -171,6 +175,9 @@ class Mapper:
             self.help_closer = None
             return
 
+        if self.launcher.open and self.launcher.button(code, down):
+            return
+
         if code == e.BTN_WEST and not down:
             out.unhold("r2_space")               # let go of an R2 + □ space, if it was one
         if down and code == e.BTN_WEST and self.r2_held():
@@ -191,7 +198,6 @@ class Mapper:
                 flash.show("PS + " + PARTS[code][1], PS_COMBOS[code].label)
                 return
         if down and self.l1_held and code in L1_COMBOS:
-            self.talk.stop()                     # an L1 combo, not talking to Iris
             out.fire(L1_COMBOS[code])
             flash.show("L1 + " + PARTS[code][1], L1_COMBOS[code].label)
             return
@@ -213,17 +219,17 @@ class Mapper:
             return
         if code == e.BTN_TL:
             self.l1_held = down
-            self.talk.press(code) if down else self.talk.release(code)
+            self.keyboard.l1(down)
             return
 
         if not down:
             if code == e.BTN_TR:
-                self.talk.release(code)
+                self.talk.release()
             out.unhold(code)
             return
 
         if code == e.BTN_TR:
-            self.talk.press(code)
+            self.talk.press()
         elif code == e.BTN_SOUTH and hyprland.menu_open():
             out.hold(code, [e.KEY_ENTER])   # ✕ confirms in the menu instead of clicking
             flash.show("✕", "Enter", plain=True)
@@ -328,7 +334,8 @@ class Mapper:
             self.guide_used = True
         held = e.ABS_Z if l2 and not r2 else e.ABS_RZ if r2 and not l2 and self.r2_held() else None
         side = None
-        if held is not None and not self.guide_used and not self.keyboard.open and not self.help.open \
+        if held is not None and not self.guide_used and not self.keyboard.open and not self.launcher.open \
+                and not self.help.open \
                 and time.monotonic() - self.trig_since[held] >= guide.DELAY:
             side = "left" if held == e.ABS_Z else "right"
         self.guide.update(side)
@@ -348,6 +355,9 @@ class Mapper:
             self.guide_used = True
         if value and self.help.open:
             self.help.show(False)                # any D-pad press closes the cheat sheet
+            return
+        if self.launcher.open:
+            self.launcher.dpad(axis, value, prev)
             return
         if self.keyboard.open:
             self.keyboard.dpad(axis, value, prev)
@@ -382,4 +392,5 @@ class Mapper:
         self.check_enter()
         self.check_guide()
         self.keyboard.tick()
+        self.launcher.tick()
         self.sticks.update(dt)

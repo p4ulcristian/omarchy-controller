@@ -6,7 +6,7 @@ from __future__ import annotations
 from evdev import ecodes as e
 
 from ..core.config import LABELS
-from ..modes.talk import DICTATE_SOCK, IRIS_OPEN, IRIS_URL
+from ..modes.talk import DICTATE_SOCK
 from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ZOOM_IN,
                        ZOOM_OUT, BASE_HOLD, BASE_TAP, DPAD_ARROWS)
@@ -35,13 +35,11 @@ def keymap() -> dict:
         add(code, b.label)
     if DICTATE_SOCK:
         add(e.BTN_TR, "Hold: dictate")
-    if IRIS_URL:
-        add(e.BTN_TL, "Hold: talk to Iris (release to send)")
-    if IRIS_OPEN:
-        add(e.BTN_TL, "Twice: open Iris")
+    add(e.BTN_TL, "Hold: on-screen keyboard")
+    add(e.BTN_TL, "Twice: keep the keyboard open (L1 again closes it)")
     if L1_COMBOS:
         add(e.BTN_TL, "Hold: combo layer")
-    add(e.BTN_TR, "Twice: on-screen keyboard")
+    add(e.BTN_MODE, "Tap: app launcher (D-pad / left stick move, ✕ opens, ○ closes)")
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
     add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Arrow keys (hold to repeat)")
@@ -59,7 +57,6 @@ def keymap() -> dict:
     add("mic", "Show this cheat sheet (any button closes it)")
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
-              {"keys": [name(e.BTN_TR), name(e.BTN_TR)], "action": "On-screen keyboard"},
               *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
               {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label},
               {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label},
@@ -119,13 +116,12 @@ def cheatsheet() -> dict:
     parts: {id: {name, actions: [label]}}; categories: [{title, rows: [{keys, action}]}]."""
     parts = keymap()["parts"]
     short = {"cross": "Click", "circle": "Escape", "square": "Enter", "triangle": "Backspace",
-             "lstick": "Pointer", "rstick": "Scroll", "options": "Omarchy menu", "ps": "Game mode",
+             "lstick": "Pointer", "rstick": "Scroll", "options": "Omarchy menu", "ps": "Apps / game mode",
              "l2": "Shortcuts", "r2": "Window mode", "dpad": "Arrow keys", "touchpad": "Arrow keys",
              "mic": "This sheet"}
     if DICTATE_SOCK:
         short["r1"] = "Voice"
-    if IRIS_URL or IRIS_OPEN:
-        short["l1"] = "Iris"
+    short["l1"] = "Keyboard"
     if L1_COMBOS:
         short["l1"] = "Your combos"
     for pid, part in parts.items():
@@ -142,10 +138,6 @@ def cheatsheet() -> dict:
     voice = []
     if DICTATE_SOCK:
         voice.append(row(["R1 hold"], "Dictate"))
-    if IRIS_URL:
-        voice.append(row(["L1 hold"], "Talk to Iris"))
-    if IRIS_OPEN:
-        voice.append(row(["L1", "L1"], "Open Iris"))
     categories = [
         {"title": "Pointer", "rows": [
             row(["L-stick"], "Move pointer"),
@@ -156,7 +148,8 @@ def cheatsheet() -> dict:
             row([sq], "Enter"), row([ci], "Escape"), row([tr], "Backspace"),
             row([sq, sq], ENTER_DOUBLE.label),
             row([R2, sq], "Space"),
-            row(["R1", "R1"], "On-screen keyboard")]},
+            row(["L1 hold"], "On-screen keyboard"),
+            row(["L1", "L1"], "Keep keyboard open")]},
         {"title": "Edit & browse", "rows": [
             row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
             row([L2, ci], L2_COMBOS[e.BTN_EAST].label),
@@ -176,6 +169,7 @@ def cheatsheet() -> dict:
             row([L2, "D-pad ↑/↓"], "Volume"),
             row([name(e.BTN_START)], BASE_TAP[e.BTN_START].label)]},
         {"title": "Voice & system", "rows": voice + [
+            row([name(e.BTN_MODE)], "App launcher"),
             row([name(e.BTN_MODE) + " hold 1 s"], "Game mode on/off"),
             row(["Mic"], "This sheet")]},
     ]

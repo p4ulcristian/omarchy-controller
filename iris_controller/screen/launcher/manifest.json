@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "p4ulcristian.iris-controller-launcher",
+  "name": "Controller app launcher",
+  "version": "1.0.0",
+  "author": "p4ulcristian",
+  "description": "App grid for iris-controller (tap PS): the apps of the Omarchy launcher as tiles. The controller moves the highlight and picks; this draws the grid and launches.",
+  "kinds": [
+    "menu"
+  ],
+  "keepLoaded": false,
+  "entryPoints": {
+    "menu": "Launcher.qml"
+  }
+}

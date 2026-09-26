@@ -1,7 +1,8 @@
 """The sticks, every tick: left moves the pointer, right scrolls. With
 L2 held the right stick switches workspaces (sideways) or changes the text
 size (up/down); in the Omarchy menu it moves through the list; with R2 held
-it belongs to window mode."""
+it belongs to window mode. While the app launcher shows, the left stick
+steps through its tiles."""
 
 from __future__ import annotations
 
@@ -43,6 +44,13 @@ class Sticks:
         lx, ly = curve(m.axes.get(e.ABS_X, 0.0), m.axes.get(e.ABS_Y, 0.0))
         rx, ry = curve(m.axes.get(e.ABS_RX, 0.0), m.axes.get(e.ABS_RY, 0.0))
 
+        if m.launcher.open:
+            # The app grid: the left stick steps through the tiles, the
+            # further-pushed direction wins; the pointer stays put.
+            axis, v = ("x", lx) if abs(lx) > abs(ly) else ("y", ly)
+            self.step(v, lambda: m.launcher.move(axis, -1), lambda: m.launcher.move(axis, 1),
+                      WORKSPACE_REPEAT, WORKSPACE_DELAY)
+            return
         speed = POINTER_MAX * dt
         self.acc[0] += lx * speed
         self.acc[1] += ly * speed

@@ -11,10 +11,12 @@ Press the mic button to toggle it as an overlay.
 | ○ | Escape |
 | □ | Enter |
 | △ | Backspace |
-| R1 | Twice: on-screen keyboard |
+| L1 | Hold: on-screen keyboard |
+| L1 | Twice: keep the keyboard open (L1 again closes it) |
 | Left stick | Move pointer |
 | Right stick | Scroll |
 | Options | Omarchy menu |
+| PS | Tap: app launcher (D-pad / left stick move, ✕ opens, ○ closes) |
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
 | L2 | Hold + right stick ←/→: previous / next workspace |
@@ -36,7 +38,6 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
-| R1 + R1 | On-screen keyboard |
 | L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
 | Hold L2 + R-stick ← | Previous workspace |

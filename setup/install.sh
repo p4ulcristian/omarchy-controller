@@ -6,6 +6,7 @@ SRC=$PWD
 SCREEN=$SRC/iris_controller/screen
 PLUGIN=p4ulcristian.iris-controller-help
 KEYBOARD=p4ulcristian.iris-controller-keyboard
+LAUNCHER=p4ulcristian.iris-controller-launcher
 FLASH=p4ulcristian.iris-controller-flash
 GUIDE=p4ulcristian.iris-controller-guide
 OLD=p4ulcristian.iris-controller-hud   # the flash's old name
@@ -25,14 +26,15 @@ EOF
 chmod +x "$BIN"
 ln -sfn "$SCREEN/help" ~/.config/omarchy/plugins/$PLUGIN
 ln -sfn "$SCREEN/keyboard" ~/.config/omarchy/plugins/$KEYBOARD
+ln -sfn "$SCREEN/launcher" ~/.config/omarchy/plugins/$LAUNCHER
 ln -sfn "$SCREEN/flash" ~/.config/omarchy/plugins/$FLASH
 ln -sfn "$SCREEN/guide" ~/.config/omarchy/plugins/$GUIDE
 rm -f ~/.config/omarchy/plugins/$OLD
 
-# Enable the cheat sheet, keyboard, flash and guide plugins in the Omarchy shell.
+# Enable the cheat sheet, keyboard, launcher, flash and guide plugins in the Omarchy shell.
 SHELL_JSON=~/.config/omarchy/shell.json
 if [ -f "$SHELL_JSON" ]; then
-  python3 - "$SHELL_JSON" "$OLD" "$PLUGIN" "$KEYBOARD" "$FLASH" "$GUIDE" <<'PY'
+  python3 - "$SHELL_JSON" "$OLD" "$PLUGIN" "$KEYBOARD" "$LAUNCHER" "$FLASH" "$GUIDE" <<'PY'
 import json, sys
 path, old, *wanted = sys.argv[1:]
 with open(path) as f:

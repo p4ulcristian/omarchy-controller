@@ -83,6 +83,20 @@ and the Omarchy menu opens where the pointer is. In game mode, and when it
 stops, your own value is put back (some setups turn it off so a fullscreen
 game can't lose focus to a neighbouring monitor).
 
+## When the link hangs
+
+A DualSense sends hundreds of reports a second even when you don't touch it.
+If they stop for 3 seconds while the controller still counts as connected,
+the USB host controller its Bluetooth adapter (or cable) sits on has wedged.
+This can happen after a flaky plug-in on a neighbouring port. The mapper then
+restarts that USB host controller, at most once a minute, and the controller
+reconnects by itself. Anything else on it (a mouse receiver, say) drops out for
+a second too.
+
+The restart runs `/usr/local/bin/iris-controller-usb-reset` through sudo. The
+installer puts it there, root-owned, with a sudoers rule
+(`/etc/sudoers.d/iris-controller`) that lets your user run only that script.
+
 ## Configuration
 
 Optional. Copy [setup/config.example.toml](setup/config.example.toml) to
@@ -123,7 +137,7 @@ A press travels device → core → output, and the keymap decides what it means
 iris_controller/
 ├── core/           the brain: mapper (buttons, combos), sticks, the main
 │                   loop (main.py) and reading config.toml (config.py)
-├── device/         the controller: finder, touchpad, mic button
+├── device/         the controller: finder, touchpad, mic button, watchdog
 ├── keymap/         what each button does: bindings, your [[bind]]s, the keymap doc
 ├── modes/          window (R2 held), game, talk (R1)
 ├── output/         virtual mouse + keyboard, Hyprland commands
@@ -133,7 +147,8 @@ iris_controller/
     ├── help/       the cheat sheet (mic button)
     ├── keyboard/   the on-screen keyboard
     └── launcher/   the app launcher (tap PS)
-setup/              install.sh, the systemd service, config.example.toml
+setup/              install.sh, the systemd service, config.example.toml,
+                    the USB reset helper
 docs/               KEYMAP.md
 ```
 
@@ -143,6 +158,7 @@ docs/               KEYMAP.md
 systemctl --user disable --now iris-controller
 rm ~/.local/bin/iris-controller ~/.config/systemd/user/iris-controller.service
 rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-{help,flash,guide,keyboard,launcher}
+sudo rm /usr/local/bin/iris-controller-usb-reset /etc/sudoers.d/iris-controller
 ```
 
 Then remove those four from the `plugins` list in

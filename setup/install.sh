@@ -54,6 +54,19 @@ PY
   command -v omarchy-shell >/dev/null && omarchy-shell -q shell rescanPlugins || true
 fi
 
+# Root helper that restarts a wedged USB host controller when the pad goes
+# silent (iris_controller/device/watchdog.py). Copied root-owned, not linked,
+# so the sudo rule can't be pointed at a file the user can edit.
+HELPER=/usr/local/bin/iris-controller-usb-reset
+SUDOERS=/etc/sudoers.d/iris-controller
+echo "Installing $HELPER and $SUDOERS (needs sudo)"
+sudo install -m 755 -o root -g root setup/iris-controller-usb-reset "$HELPER"
+RULE="$(id -un) ALL=(root) NOPASSWD: $HELPER"
+TMP=$(mktemp)
+echo "$RULE" > "$TMP"
+sudo visudo -cqf "$TMP" && sudo install -m 440 -o root -g root "$TMP" "$SUDOERS"
+rm -f "$TMP"
+
 cp setup/iris-controller.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now iris-controller

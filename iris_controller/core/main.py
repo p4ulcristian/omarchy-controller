@@ -10,6 +10,7 @@ import sys
 import time
 
 from ..device.finder import find_controller
+from ..device.watchdog import Watchdog
 from ..keymap import bindings, user_binds
 from ..keymap.docs import keymap_markdown
 from ..modes.game import GAME_POLL
@@ -27,6 +28,16 @@ def _raise_interrupt(*_) -> None:
     raise KeyboardInterrupt
 
 
+def _drop(m: Mapper, sel: selectors.BaseSelector) -> None:
+    """Forget the controller; the loop looks for it again every SCAN_EVERY."""
+    for d in [*m.devs, m.hid_fd]:
+        try:
+            sel.unregister(d)
+        except Exception:
+            pass
+    m.detach()
+
+
 def main() -> int:
     # systemctl stop sends SIGTERM: exit through the same cleanup as ctrl+c so
     # held keys are released and the user's Hyprland setting is put back.
@@ -41,6 +52,7 @@ def main() -> int:
     m = Mapper(out)
     sel = selectors.DefaultSelector()
     reports = keyboard.PointerReports(sel, m.keyboard.line)
+    dog = Watchdog()
     last_tick = time.monotonic()
     last_game = 0.0
     last_scan = 0.0
@@ -57,6 +69,7 @@ def main() -> int:
                         sel.register(d, selectors.EVENT_READ)
                     if m.hid_fd is not None:
                         sel.register(m.hid_fd, selectors.EVENT_READ)
+                    dog.attach(m.pad)
             if m.devs and now - last_game > GAME_POLL:
                 last_game = now
                 m.game.poll()
@@ -68,6 +81,7 @@ def main() -> int:
                 try:
                     if isinstance(dev, int):
                         m.on_hid(os.read(dev, 128))
+                        dog.fed()
                     else:
                         for ev in dev.read():
                             m.handle(ev, dev)
@@ -75,13 +89,15 @@ def main() -> int:
                     pass
                 except OSError:
                     log.info("controller disconnected")
-                    for d in [*m.devs, m.hid_fd]:
-                        try:
-                            sel.unregister(d)
-                        except Exception:
-                            pass
-                    m.detach()
+                    _drop(m, sel)
                     break
+
+            # A hung link doesn't disconnect, it goes quiet (see device/watchdog.py).
+            if m.hid_fd is not None and dog.dead(time.monotonic()):
+                log.warning("controller went silent")
+                _drop(m, sel)
+                if dog.reset_host(time.monotonic()):
+                    m.flash.message("Controller link hung: USB restarted")
 
             now = time.monotonic()
             m.tick(min(now - last_tick, 0.05))

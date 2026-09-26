@@ -50,10 +50,6 @@ L2_COMBOS = {
 }
 ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # L2 + right stick
 ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
-# L2 + right stick sideways: next/previous workspace on the focused
-# monitor (empty ones too).
-NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
-PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
 # Empty: the PS button only toggles game mode.
 PS_COMBOS: dict[int, Bind] = {}

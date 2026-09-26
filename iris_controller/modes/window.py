@@ -8,13 +8,11 @@ import time
 
 from evdev import ecodes as e
 
-from ..core.sticks import WORKSPACE_REPEAT
+from ..core.sticks import WORKSPACE_DELAY, WORKSPACE_REPEAT
 from ..keymap.bindings import SUPER
 from ..output import hyprland
 
 WINDOW_DRAG = [SUPER, e.BTN_LEFT]
-MOVE_NEXT_WS = 'hl.dsp.window.move({ workspace = "r+1" })'
-MOVE_PREV_WS = 'hl.dsp.window.move({ workspace = "r-1" })'
 RESIZE_SPEED = 900          # px/s the window grows at full R2 + right stick
 RESIZE_EVERY = 0.03         # at most one resize dispatch per this many seconds
 
@@ -41,8 +39,9 @@ class WindowMode:
                 m.flash.show("R2 + L-stick", "Move window")
             self.dragged = True
         if self.dragged:
-            m.sticks.step(rx, lambda: self.move_window(MOVE_PREV_WS),
-                          lambda: self.move_window(MOVE_NEXT_WS), WORKSPACE_REPEAT)
+            m.sticks.step(rx, lambda: self.move_window(-1),
+                          lambda: self.move_window(1), WORKSPACE_REPEAT,
+                          WORKSPACE_DELAY)
             return True
         # Right/down grow the window, left/up shrink it. Batched so a held
         # stick is a few hyprctl calls a second, not one per tick.
@@ -60,9 +59,15 @@ class WindowMode:
             self.resized = True
         return True
 
-    def move_window(self, dispatch: str) -> None:
+    def move_window(self, way: int) -> None:
         # Let go of the Super-drag first: a window can't change workspace
         # mid-drag. The left stick picks it up again on the new workspace.
         self.m.out.unhold("drag")
-        hyprland.dispatch_wait(dispatch)
-        self.m.flash.show("R2 + R-stick", f"Window to workspace {hyprland.workspace_name()}")
+
+        def go() -> None:
+            ws = hyprland.next_workspace(way)
+            if ws is not None:
+                hyprland.dispatch_wait(f'hl.dsp.window.move({{ workspace = "{ws}" }})')
+            self.m.flash.show("R2 + R-stick", f"Window to workspace {hyprland.workspace_name()}"
+                              if ws is not None else "No more workspaces")
+        hyprland.later(go)

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import queue
 import subprocess
+import threading
 import time
 
 MOUSE_FOCUS = "misc:mouse_move_focuses_monitor"
@@ -29,6 +31,53 @@ def dispatch_wait(arg: str) -> None:
     """Returns once Hyprland has done it, e.g. to name the workspace we land on."""
     subprocess.run(["hyprctl", "dispatch", arg],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+
+_in_order: queue.SimpleQueue = queue.SimpleQueue()
+
+
+def _run_in_order() -> None:
+    while True:
+        job = _in_order.get()
+        try:
+            job()
+        except Exception:
+            pass
+
+
+threading.Thread(target=_run_in_order, daemon=True).start()
+
+
+def later(job) -> None:
+    """Runs job() on a thread of its own, in order with the other jobs:
+    the caller never waits on hyprctl."""
+    _in_order.put(job)
+
+
+def next_workspace(way: int) -> int | None:
+    """The workspace one step `way` (+1 / -1) from the focused one on its
+    monitor: the next one with windows, or past the last of those one new
+    empty workspace, and no further. None when there is nowhere to go."""
+    here = hyprctl_json("activeworkspace") or {}
+    cur, mon = here.get("id"), here.get("monitor")
+    if cur is None:
+        return None
+    spaces = [w for w in hyprctl_json("workspaces") or [] if w["id"] > 0]
+    busy = sorted(w["id"] for w in spaces if w["monitor"] == mon and w["windows"])
+    ahead = [i for i in busy if (i - cur) * way > 0]
+    if ahead:
+        return ahead[0] if way > 0 else ahead[-1]
+    if way < 0 or not here.get("windows"):
+        return None
+    # Past the last: the first number nobody uses and no rule keeps on another monitor.
+    taken = {w["id"] for w in spaces}
+    for rule in hyprctl_json("workspacerules") or []:
+        if rule.get("monitor") not in (None, mon) and rule.get("workspaceString", "").isdigit():
+            taken.add(int(rule["workspaceString"]))
+    new = cur + 1
+    while new in taken:
+        new += 1
+    return new
 
 
 def workspace_name() -> str:

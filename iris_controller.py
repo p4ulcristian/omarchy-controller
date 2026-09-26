@@ -11,10 +11,8 @@ import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
 import tomllib
-import urllib.request
 from typing import NamedTuple
 
 import evdev
@@ -38,13 +36,16 @@ PRECISION = 0.3
 SCROLL_MAX = 2400.0          # hi-res wheel units/s (120 = one notch)
 TRIGGER_ON, TRIGGER_OFF = 0.5, 0.3
 DOUBLE_TAP_WINDOW = 0.25    # second ✕ within this = Ctrl+Enter; a single ✕ waits this long
+CHORD_WINDOW = 0.06         # L2 within this of R2 = fullscreen
 ZOOM_THRESHOLD = 0.5         # right stick deflection that counts as a zoom step
 ZOOM_REPEAT = 0.2           # seconds between zoom steps while the stick stays pushed
 WORKSPACE_REPEAT = 0.4      # seconds between workspace steps while the stick stays pushed
+RESIZE_SPEED = 900          # px/s the window grows at full RT + right stick
+RESIZE_EVERY = 0.03         # at most one resize dispatch per this many seconds
 GAME_TOGGLE_HOLD = 1.0      # hold the PS button this long to toggle game mode
 GAME_POLL = 1.0
 GAME_CLASSES = ("steam_app_", "gamescope")
-MENU_LAYERS = ("omarchy-menu",)   # keyboard-driven overlays: D-pad/right stick send arrows
+MENU_LAYERS = ("omarchy-menu",)   # keyboard-driven overlays: the right stick sends arrows
 MENU_CACHE = 0.25
 HELP_PLUGIN = "p4ulcristian.iris-controller-help"   # Omarchy shell plugin in overlay/
 MIC_BIT = 0x04     # DualSense mic button: third button byte of the raw HID report
@@ -70,10 +71,6 @@ def load_config() -> dict:
 CONFIG = load_config()
 # R1: push-to-talk dictation. A Unix socket that takes "start" and "stop".
 DICTATE_SOCK = os.path.expanduser(CONFIG.get("dictate", {}).get("socket", "")) or None
-# R2: dictate, then post the transcript to an Iris server. Needs the dictate
-# socket to also take "stop-return" (stop and reply with the text).
-IRIS = CONFIG.get("iris", {})
-IRIS_URL = IRIS.get("url") if DICTATE_SOCK else None
 # Rename actions in the cheat sheet, e.g. "Terminal" = "Claude in ~/Work".
 LABELS: dict[str, str] = CONFIG.get("labels", {})
 
@@ -102,13 +99,23 @@ BASE_TAP = {
 }
 ENTER_BTN = e.BTN_WEST      # □: Enter, double tap = Ctrl+Enter
 ENTER_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # □ twice
-# RT is push-to-talk to Iris if configured (see talk_to_iris). LT is a modifier:
-# held, it turns ✕ into the right mouse button.
+# LT is a modifier for the combos below; LT + RT together is fullscreen.
+# RT held is window mode: the left stick drags the window (Super + left
+# button, pressed once the stick moves), the right stick resizes it.
+WINDOW_DRAG = [SUPER, e.BTN_LEFT]
 RIGHT_CLICK = Bind([e.BTN_RIGHT], "Right click")                # LT + ✕
-IRIS_TALK = "talk to Iris (release to send)"
+FULLSCREEN = Bind([SUPER, e.KEY_F], "Fullscreen")               # LT + RT together
+# LT held + another button: one-shot chord. Copy/paste are Omarchy's universal
+# ones, so they work in terminals too.
+LT_COMBOS = {
+    e.BTN_NORTH: Bind([SUPER, e.KEY_W], "Close window"),          # physical Y / Triangle
+    e.BTN_WEST: Bind([SUPER, e.KEY_C], "Copy"),                   # physical X / Square
+    e.BTN_EAST: Bind([SUPER, e.KEY_V], "Paste"),                  # physical B / Circle
+}
 ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # LB + right stick
 ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
-# LB + right stick sideways: next/previous workspace on the focused monitor (empty ones too).
+# LB + right stick or LT + D-pad sideways: next/previous workspace on the focused
+# monitor (empty ones too).
 NEXT_WS = 'hl.dsp.focus({ workspace = "r+1" })'
 PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
 # PS button held + another button: one-shot chord (cancels the tap and hold).
@@ -179,9 +186,9 @@ def load_binds() -> None:
 load_binds()
 
 OUT_KEYS = sorted(
-    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, DOUBLE_TRIGGERS)
+    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, LT_COMBOS, DOUBLE_TRIGGERS)
      for b in m.values() for k in b.keys}
-    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, ZOOM_IN, ZOOM_OUT) for k in b.keys}
+    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
     | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}
     | {SUPER, SHIFT, CTRL, ALT, e.KEY_A, e.KEY_Z}
@@ -225,10 +232,12 @@ def keymap() -> dict:
         add(e.BTN_TR, "Hold: dictate")
     add(e.BTN_TL, "Hold: combo layer")
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
-    if IRIS_URL:
-        add(e.ABS_RZ, "Hold: " + IRIS_TALK)
     add(e.ABS_Z, "Hold + ✕: right click")
-    add("dpad", "Focus window that way")
+    add("dpad", "Arrow keys (hold to repeat)")
+    add(e.ABS_Z, "Hold + D-pad ←/→: previous / next workspace")
+    add(e.ABS_Z, "Hold + D-pad ↑/↓: volume up / down")
+    add(e.ABS_RZ, "Hold + left stick: move window")
+    add(e.ABS_RZ, "Hold + right stick: resize window")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
     add("touchpad", "Click & hold: arrow key, repeating")
@@ -236,7 +245,16 @@ def keymap() -> dict:
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
               *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
-              {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label}]
+              {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label},
+              {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label},
+              {"keys": ["Hold " + name(e.ABS_Z), "D-pad ←"], "action": "Previous workspace"},
+              {"keys": ["Hold " + name(e.ABS_Z), "D-pad →"], "action": "Next workspace"},
+              {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↑"], "action": "Volume up"},
+              {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↓"], "action": "Volume down"},
+              {"keys": ["Hold " + name(e.ABS_RZ), "Left stick"], "action": "Move window"},
+              {"keys": ["Hold " + name(e.ABS_RZ), "R-stick"], "action": "Resize window (→/↓ bigger)"}]
+    combos += [{"keys": ["Hold " + name(e.ABS_Z), name(c)], "action": b.label}
+               for c, b in LT_COMBOS.items()]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
                for c, b in GUIDE_COMBOS.items()]
     combos += [{"keys": ["Hold " + name(e.BTN_TL), "R-stick ←"], "action": "Previous workspace"},
@@ -302,50 +320,6 @@ def set_mouse_focus(on: bool) -> None:
 def hypr_dispatch(arg: str) -> None:
     subprocess.Popen(["hyprctl", "dispatch", arg],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-
-def iris_secret() -> str:
-    """The shared secret, read from a KEY=value file so it never sits in the config."""
-    path = IRIS.get("secret_file")
-    if not path:
-        return ""
-    name = IRIS.get("secret_key", "IRIS_INTERNAL_SECRET")
-    try:
-        with open(os.path.expanduser(path)) as f:
-            for line in f:
-                key, _, value = line.strip().partition("=")
-                if key == name:
-                    return value.strip().strip("'\"")
-    except OSError as exc:
-        log.warning("iris secret: %s", exc)
-    return ""
-
-
-def talk_to_iris() -> None:
-    """Runs in a thread: stop dictation, get the transcript, post it to Iris."""
-    try:
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.settimeout(65)
-        s.connect(DICTATE_SOCK)
-        s.sendall(b"stop-return")
-        s.shutdown(socket.SHUT_WR)
-        text = s.recv(65536).decode().strip()
-        s.close()
-    except Exception as exc:
-        log.warning("dictate stop-return failed: %s", exc)
-        return
-    if not text:
-        return
-    req = urllib.request.Request(
-        IRIS_URL, data=json.dumps({"message": text, "source": "desktop"}).encode(),
-        headers={"Content-Type": "application/json", "X-Iris-Secret": iris_secret()})
-    try:
-        urllib.request.urlopen(req, timeout=10).read()
-        notify(f"To Iris: {text}")
-    except Exception as exc:
-        log.warning("iris send failed: %s", exc)
-        subprocess.run(["wl-copy", text], check=False)
-        notify(f"Iris didn't answer; message is on the clipboard: {text}")
 
 
 def dictate(verb: str) -> None:
@@ -424,6 +398,8 @@ class Mapper:
         self.zoom_mode = False                  # LB held: right stick zooms
         self.enter_first: float | None = None   # first □ press, waiting for a second one
         self.zoom_next = 0.0                    # when the next zoom/arrow step may fire
+        self.resize_acc = [0.0, 0.0]            # RT + right stick: px not yet sent
+        self.resize_next = 0.0                  # when the next resize may be sent
         self.menu_checked = (0.0, False)        # (time, omarchy menu open?)
         self.acc = [0.0, 0.0, 0.0, 0.0]         # dx, dy, wheel_v, wheel_h
         self.manual_pause = False
@@ -516,8 +492,6 @@ class Mapper:
 
     def release_all(self) -> None:
         self.enter_first = None
-        if self.btn_owner.pop("iris", None) is not None:
-            dictate("stop")
         self.trig_pending.clear()
         self.mic_down = False
         if self.help_open:
@@ -670,6 +644,9 @@ class Mapper:
         if down and self.zoom_mode and code in LB_COMBOS:
             self.fire(LB_COMBOS[code])
             return
+        if down and self.trig[e.ABS_Z] and code in LT_COMBOS:
+            self.fire(LT_COMBOS[code])
+            return
 
         if code == ENTER_BTN:
             self.on_enter(down)
@@ -750,6 +727,13 @@ class Mapper:
         if not now and code in self.trig_consumed:
             self.trig_consumed.discard(code)
             return
+        # Both triggers together = fullscreen, in either order: an RT press
+        # stays pending for CHORD_WINDOW so LT can still join it.
+        if now and (self.trig[e.ABS_Z] if code == e.ABS_RZ
+                    else self.trig_pending.pop(e.ABS_RZ, None) is not None):
+            self.trig_consumed.add(e.ABS_RZ)
+            self.tap(FULLSCREEN.keys)
+            return
         if code == e.ABS_Z and code not in DOUBLE_TRIGGERS:
             return                        # LT is only a modifier (see on_button)
         if now:
@@ -757,32 +741,59 @@ class Mapper:
             return
         if self.trig_pending.pop(code, None) is not None:
             self.trig_tapped[code] = time.monotonic()   # a quick tap: maybe half a double tap
-        elif code == e.ABS_RZ:
-            if self.btn_owner.pop("iris", None) is not None:
-                threading.Thread(target=talk_to_iris, daemon=True).start()
 
     def check_triggers(self) -> None:
         now = time.monotonic()
         for code, since in list(self.trig_pending.items()):
-            # With a double tap bound, wait out the double-tap window before the
-            # hold starts, so the first tap of a double doesn't begin a hold.
-            if now - since >= (DOUBLE_TAP_WINDOW if code in DOUBLE_TRIGGERS else 0.0):
+            # A press stays a possible chord / double-tap start for this long.
+            if now - since >= (DOUBLE_TAP_WINDOW if code in DOUBLE_TRIGGERS else CHORD_WINDOW):
                 del self.trig_pending[code]
-                if code == e.ABS_RZ and IRIS_URL:
-                    self.btn_owner["iris"] = []   # released in on_abs
-                    dictate("start")
 
     def on_hat(self, axis: str, value: int) -> None:
         prev = self.hat[axis]
         self.hat[axis] = value
         if self.paused:
             return
-        # D-pad = SUPER + arrow: focus the window in that direction.
-        # With the Omarchy menu open it sends plain arrows to move through it.
+        # D-pad = arrow keys, held while the direction is, so they autorepeat.
         names = ("left", "right") if axis == "x" else ("up", "down")
-        if value and not prev:
-            arrow = ARROWS[names[0] if value < 0 else names[1]]
-            self.tap([arrow] if self.menu_open() else [SUPER, arrow])
+        if value != prev:
+            self.unhold(("hat", axis))
+            if value and axis == "x" and self.trig[e.ABS_Z]:
+                hypr_dispatch(PREV_WS if value < 0 else NEXT_WS)   # LT held: ←/→ = workspaces
+            elif value and self.trig[e.ABS_Z]:
+                # LT held: ↑/↓ = volume, held so Omarchy's binding repeats it.
+                self.hold(("hat", axis), VOLUME_UP if value < 0 else VOLUME_DOWN)
+            elif value:
+                self.hold(("hat", axis), [ARROWS[names[0] if value < 0 else names[1]]])
+
+    def rt_held(self) -> bool:
+        # RT down as window mode: not still a possible fullscreen chord / double
+        # tap, and not already used up by one.
+        return (self.trig[e.ABS_RZ] and e.ABS_RZ not in self.trig_pending
+                and e.ABS_RZ not in self.trig_consumed)
+
+    def window_mode(self, lx: float, ly: float, rx: float, ry: float, dt: float) -> bool:
+        # RT held: the left stick drags the window (Super-drag, started once the
+        # stick moves) and the right stick resizes it. False when RT isn't held;
+        # letting go of RT drops the window.
+        if not self.rt_held():
+            self.unhold("drag")
+            self.resize_acc = [0.0, 0.0]
+            return False
+        if (lx or ly) and "drag" not in self.btn_owner:
+            self.hold("drag", WINDOW_DRAG)
+        # Right/down grow the window, left/up shrink it. Batched so a held
+        # stick is a few hyprctl calls a second, not one per tick.
+        self.resize_acc[0] += rx * RESIZE_SPEED * dt
+        self.resize_acc[1] += ry * RESIZE_SPEED * dt
+        now = time.monotonic()
+        dx, dy = int(self.resize_acc[0]), int(self.resize_acc[1])
+        if (dx or dy) and now >= self.resize_next:
+            self.resize_acc[0] -= dx
+            self.resize_acc[1] -= dy
+            self.resize_next = now + RESIZE_EVERY
+            hypr_dispatch(f"hl.dsp.window.resize({{ x = {dx}, y = {dy}, relative = true }})")
+        return True
 
     def menu_open(self) -> bool:
         at, is_open = self.menu_checked
@@ -834,7 +845,9 @@ class Mapper:
         speed = POINTER_MAX * (PRECISION if self.precision else 1.0) * dt
         self.acc[0] += lx * speed
         self.acc[1] += ly * speed
-        if self.zoom_mode:
+        if self.window_mode(lx, ly, rx, ry, dt):
+            pass                                # RT held: right stick resizes
+        elif self.zoom_mode:
             # LB + right stick: sideways = workspaces, up/down = zoom. The
             # further-pushed direction wins, so a slightly diagonal push is one.
             if abs(rx) > abs(ry):

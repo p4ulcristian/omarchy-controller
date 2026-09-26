@@ -20,7 +20,7 @@ button):
 | Left stick | Move pointer (click and hold right stick for precision) |
 | Right stick | Scroll |
 | ✕ / ○ / □ / △ | Left click / Escape / Enter / Backspace |
-| D-pad | Focus the window in that direction |
+| D-pad | Arrow keys (hold to repeat) |
 | Touchpad | Tap: arrow key toward the side you touch (click and hold to repeat), swipe up/down: volume |
 | Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
 | Create | Close window |
@@ -28,6 +28,12 @@ button):
 | L1 + right stick ↑/↓ | Bigger / smaller text |
 | L1 + ✕ / △ | Terminal / close window |
 | L2 + ✕ | Right click (hold = drag) |
+| L2 + D-pad ←/→ | Previous / next workspace |
+| L2 + D-pad ↑/↓ | Volume up / down |
+| L2 + △ / □ / ○ | Close window / copy / paste |
+| L2 + R2 | Fullscreen |
+| R2 held + left stick | Move the window |
+| R2 held + right stick | Resize the window (→/↓ bigger, ←/↑ smaller) |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show / hide the cheat sheet |
 
@@ -81,7 +87,6 @@ Optional. Copy [config.example.toml](config.example.toml) to
 - make **R1** push-to-talk dictation with
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
-- make **R2** dictate and send the text to an Iris server,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
 - add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button,
   or a double tap on L2/R2, that run a command or send keys. They appear in the

@@ -7,14 +7,6 @@
 # [dictate]
 # socket = "/run/user/1000/justsay/justsay.sock"
 
-# R2 held = dictate, then send the transcript to an Iris server. Needs the
-# dictate socket above to also accept "stop-return" (stop and reply with the
-# text). The secret is read from a KEY=value file so it stays out of this one.
-# [iris]
-# url = "http://127.0.0.1:4270/api/chat"
-# secret_file = "~/path/to/.env"
-# secret_key = "IRIS_INTERNAL_SECRET"
-
 # Rename actions in the cheat sheet, e.g. when you rebound Super+Enter.
 # [labels]
 # "Terminal" = "Claude in ~/Work"
@@ -25,8 +17,6 @@
 #          Options, Create, PS
 #   run:   a shell command, or keys = "SUPER + W" to send a key combo
 #   label: the name in the cheat sheet
-# With a double tap on a trigger, its hold starts after 0.25 s instead of
-# right away, so the first tap of a double never begins a hold.
 # [[bind]]
 # input = "R2 double"
 # run = "omarchy-launch-webapp https://example.com"

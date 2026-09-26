@@ -21,8 +21,11 @@ Press the mic button to toggle it as an overlay.
 | Create | Close window |
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
-| R2 | Hold: talk to Iris (release to send) |
-| D-pad | Focus window that way |
+| L2 | Hold + D-pad ←/→: previous / next workspace |
+| L2 | Hold + D-pad ↑/↓: volume up / down |
+| R2 | Hold + left stick: move window |
+| R2 | Hold + right stick: resize window |
+| D-pad | Arrow keys (hold to repeat) |
 | Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Tap: arrow key toward that side |
 | Touchpad | Click & hold: arrow key, repeating |
@@ -34,7 +37,17 @@ Press the mic button to toggle it as an overlay.
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
 | R2 + R2 | Open Iris |
+| L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
+| Hold L2 + D-pad ← | Previous workspace |
+| Hold L2 + D-pad → | Next workspace |
+| Hold L2 + D-pad ↑ | Volume up |
+| Hold L2 + D-pad ↓ | Volume down |
+| Hold R2 + Left stick | Move window |
+| Hold R2 + R-stick | Resize window (→/↓ bigger) |
+| Hold L2 + △ | Close window |
+| Hold L2 + □ | Copy |
+| Hold L2 + ○ | Paste |
 | Hold L1 + R-stick ← | Previous workspace |
 | Hold L1 + R-stick → | Next workspace |
 | Hold L1 + R-stick ↑ | Bigger text |

@@ -18,3 +18,21 @@
 # Rename actions in the cheat sheet, e.g. when you rebound Super+Enter.
 # [labels]
 # "Terminal" = "Claude in ~/Work"
+
+# Your own buttons. Each [[bind]] adds one; they show up in the cheat sheet.
+#   input: "L1 + <button>", "PS + <button>", "R2 double" or "L2 double"
+#          buttons: ✕ ○ □ △ (or x o square triangle), L1 R1 L2 R2 L3 R3,
+#          Options, Create, PS
+#   run:   a shell command, or keys = "SUPER + W" to send a key combo
+#   label: the name in the cheat sheet
+# With a double tap on a trigger, its hold starts after 0.25 s instead of
+# right away, so the first tap of a double never begins a hold.
+# [[bind]]
+# input = "R2 double"
+# run = "omarchy-launch-webapp https://example.com"
+# label = "Open my web app"
+#
+# [[bind]]
+# input = "L1 + ○"
+# keys = "SUPER + B"
+# label = "Browser"

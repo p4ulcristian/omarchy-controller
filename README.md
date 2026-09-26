@@ -84,6 +84,9 @@ Optional. Copy [config.example.toml](config.example.toml) to
   socket accepts `start` / `stop`),
 - make **R2** dictate and send the text to an Iris server,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
+- add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button,
+  or a double tap on L2/R2, that run a command or send keys. They appear in the
+  cheat sheet too.
 
 The bindings themselves are the tables at the top of `iris_controller.py`.
 After changing them, regenerate the keymap:

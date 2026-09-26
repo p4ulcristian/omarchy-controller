@@ -85,6 +85,7 @@ SUPER, SHIFT, CTRL, ALT = e.KEY_RIGHTMETA, e.KEY_LEFTSHIFT, e.KEY_LEFTCTRL, e.KE
 class Bind(NamedTuple):
     keys: list[int]
     label: str       # shown in the cheat sheet overlay and KEYMAP.md
+    run: str | None = None   # a shell command instead of keys (user binds)
 
 
 # Buttons mirrored as held keys (so autorepeat and drag work).
@@ -126,8 +127,63 @@ LB_COMBOS = {
 VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}
 
+# L2/R2 double tap: user binds only (see [[bind]] in config.example.toml).
+DOUBLE_TRIGGERS: dict[int, Bind] = {}
+
+# Names a [[bind]] input may use for a button.
+BUTTON_NAMES = {
+    "✕": e.BTN_SOUTH, "x": e.BTN_SOUTH, "cross": e.BTN_SOUTH,
+    "○": e.BTN_EAST, "o": e.BTN_EAST, "circle": e.BTN_EAST,
+    "□": e.BTN_WEST, "square": e.BTN_WEST,
+    "△": e.BTN_NORTH, "triangle": e.BTN_NORTH,
+    "l1": e.BTN_TL, "r1": e.BTN_TR, "l2": e.ABS_Z, "r2": e.ABS_RZ,
+    "l3": e.BTN_THUMBL, "r3": e.BTN_THUMBR,
+    "options": e.BTN_START, "create": e.BTN_SELECT, "ps": e.BTN_MODE,
+}
+MODIFIERS = {"super": SUPER, "ctrl": CTRL, "shift": SHIFT, "alt": ALT}
+
+
+def parse_keys(spec: str) -> list[int]:
+    """"SUPER + W" -> [SUPER, KEY_W]."""
+    keys = []
+    for part in (p.strip().lower() for p in spec.split("+")):
+        code = MODIFIERS.get(part) or getattr(e, "KEY_" + part.upper(), None)
+        if code is None:
+            raise ValueError(f"unknown key {part!r}")
+        keys.append(code)
+    return keys
+
+
+def load_binds() -> None:
+    """Add the config's [[bind]] entries to the tables:
+         input = "L1 + ○" | "PS + ✕" | "R2 double" | "L2 double"
+         run = "a shell command"  or  keys = "SUPER + W"
+         label = "shown in the cheat sheet"
+    A bad entry is logged and skipped; the rest still load."""
+    for entry in CONFIG.get("bind", []):
+        try:
+            spec = entry["input"].strip().lower()
+            if entry.get("run"):
+                action = Bind([], entry.get("label", entry["run"]), entry["run"])
+            else:
+                action = Bind(parse_keys(entry["keys"]), entry.get("label", entry["keys"]))
+            if spec.endswith(" double"):
+                code = BUTTON_NAMES[spec.removesuffix(" double").strip()]
+                if code not in (e.ABS_Z, e.ABS_RZ):
+                    raise ValueError("double tap works on L2 and R2")
+                DOUBLE_TRIGGERS[code] = action
+            else:
+                layer, _, button = (x.strip() for x in spec.partition("+"))
+                table = {"l1": LB_COMBOS, "ps": GUIDE_COMBOS}[layer]
+                table[BUTTON_NAMES[button]] = action
+        except (KeyError, ValueError) as exc:
+            log.warning("config bind %r skipped: %s", entry, exc)
+
+
+load_binds()
+
 OUT_KEYS = sorted(
-    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, TRIGGER_ACTION)
+    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, TRIGGER_ACTION, DOUBLE_TRIGGERS)
      for b in m.values() for k in b.keys}
     | {k for b in (ENTER_DOUBLE, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
@@ -176,7 +232,7 @@ def keymap() -> dict:
     if IRIS_URL:
         add(e.ABS_RZ, "Hold: " + IRIS_TALK)
     add(e.ABS_Z, "Hold: " + TRIGGER_ACTION[e.ABS_Z].label)
-    add(e.ABS_Z, "Hold + right stick ←/→: take window to prev / next workspace")
+    add(e.ABS_Z, "+ R-stick ←/→: window to prev / next workspace")
     add("dpad", "Focus window that way")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
@@ -184,6 +240,7 @@ def keymap() -> dict:
     add("mic", "Show / hide this cheat sheet")
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
+              *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
               {"keys": [name(e.ABS_Z), name(e.ABS_RZ)], "action": FULLSCREEN.label}]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
                for c, b in GUIDE_COMBOS.items()]
@@ -366,6 +423,8 @@ class Mapper:
         self.btn_owner: dict[object, list[int]] = {}  # input -> output keys held for it
         self.trig = {e.ABS_Z: False, e.ABS_RZ: False}
         self.trig_pending: dict[int, float] = {}  # trigger -> press time, action not sent yet
+        self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
+        self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
         self.trig_chord = False                   # both fired together; ignore until both up
         self.hat = {"x": 0, "y": 0}
         self.precision = False
@@ -442,6 +501,16 @@ class Mapper:
         for k in reversed(combo):
             self.ui.write(e.EV_KEY, k, 0)
             self.ui.syn()
+
+    def fire(self, bind: Bind) -> None:
+        """A one-shot action: its keys, or its command (detached, output dropped)."""
+        if bind.run:
+            log.info("run: %s", bind.run)
+            subprocess.Popen(["sh", "-c", bind.run], stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+        else:
+            self.tap(bind.keys)
 
     def hold(self, owner, combo: list[int]) -> None:
         self.btn_owner[owner] = combo
@@ -603,10 +672,10 @@ class Mapper:
         if down and self.guide_since is not None:
             self.guide_fired = True
             if code in GUIDE_COMBOS:
-                self.tap(GUIDE_COMBOS[code].keys)
+                self.fire(GUIDE_COMBOS[code])
                 return
         if down and self.zoom_mode and code in LB_COMBOS:
-            self.tap(LB_COMBOS[code].keys)
+            self.fire(LB_COMBOS[code])
             return
 
         if code == ENTER_BTN:
@@ -679,6 +748,16 @@ class Mapper:
             return
         self.trig[code] = now
         other = e.ABS_Z if code == e.ABS_RZ else e.ABS_RZ
+        if now and code in DOUBLE_TRIGGERS and \
+                time.monotonic() - self.trig_tapped.pop(code, -1.0) < DOUBLE_TAP_WINDOW:
+            self.trig_consumed.add(code)
+            self.fire(DOUBLE_TRIGGERS[code])
+            return
+        if not now and code in self.trig_consumed:
+            self.trig_consumed.discard(code)
+            if not any(self.trig.values()):
+                self.trig_chord = False
+            return
         if now:
             # Hold the action back for CHORD_WINDOW so both triggers can become fullscreen.
             if self.trig_pending.pop(other, None) is not None:
@@ -688,6 +767,7 @@ class Mapper:
                 self.trig_pending[code] = time.monotonic()
             return
         if self.trig_pending.pop(code, None) is not None:
+            self.trig_tapped[code] = time.monotonic()   # a quick tap: maybe half a double tap
             if code in TRIGGER_ACTION:
                 self.tap(TRIGGER_ACTION[code].keys)   # released before the window: plain click
         elif code == e.ABS_RZ:
@@ -703,7 +783,9 @@ class Mapper:
     def check_triggers(self) -> None:
         now = time.monotonic()
         for code, since in list(self.trig_pending.items()):
-            if now - since >= CHORD_WINDOW:
+            # With a double tap bound, wait out the double-tap window before the
+            # hold starts, so the first tap of a double doesn't begin a hold.
+            if now - since >= (DOUBLE_TAP_WINDOW if code in DOUBLE_TRIGGERS else CHORD_WINDOW):
                 del self.trig_pending[code]
                 if code == e.ABS_RZ:
                     if IRIS_URL:

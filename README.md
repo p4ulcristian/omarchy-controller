@@ -89,6 +89,10 @@ Optional. Copy [config.example.toml](config.example.toml) to
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
+- turn off the popups: every press shows a short notification naming what
+  it did ("□ → Enter", "L2 + □ → Copy", "L2 + R-stick → Workspace 3"),
+  replacing the last one so repeats don't stack. Combos and plain presses
+  have separate switches.
 - add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button,
   or a double tap on L2/R2, that run a command or send keys. They appear in the
   cheat sheet too.

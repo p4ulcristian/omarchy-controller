@@ -11,6 +11,13 @@
 # [labels]
 # "Terminal" = "Claude in ~/Work"
 
+# A short popup names what each press just did: combos ("L2 + □ → Copy",
+# "L2 + R-stick → Workspace 3") and plain presses ("□ → Enter", "D-pad → Up").
+# Both on by default; each popup replaces the last one.
+# [notify]
+# combos = false
+# buttons = false
+
 # Your own buttons. Each [[bind]] adds one; they show up in the cheat sheet.
 #   input: "L1 + <button>", "PS + <button>", "R2 double" or "L2 double"
 #          buttons: ✕ ○ □ △ (or x o square triangle), L1 R1 L2 R2 L3 R3,

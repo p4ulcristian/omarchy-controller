@@ -72,6 +72,10 @@ CONFIG = load_config()
 DICTATE_SOCK = os.path.expanduser(CONFIG.get("dictate", {}).get("socket", "")) or None
 # Rename actions in the cheat sheet, e.g. "Terminal" = "Claude in ~/Work".
 LABELS: dict[str, str] = CONFIG.get("labels", {})
+# A short popup naming each combo as it fires ("L2 + □ → Copy"), and each
+# plain press ("□ → Enter").
+COMBO_NOTIFY = CONFIG.get("notify", {}).get("combos", True)
+BUTTON_NOTIFY = CONFIG.get("notify", {}).get("buttons", True)
 
 # Right-hand Super/Alt, so layouts that swap the left ones
 # (altwin:swap_lalt_lwin) still get the modifier they expect.
@@ -306,6 +310,10 @@ def hyprctl_json(what: str):
 MOUSE_FOCUS = "misc:mouse_move_focuses_monitor"
 
 
+def workspace_name() -> str:
+    return (hyprctl_json("activeworkspace") or {}).get("name", "?")
+
+
 def mouse_focus_option() -> bool:
     return bool((hyprctl_json(f"getoption {MOUSE_FOCUS}") or {}).get("bool", True))
 
@@ -341,9 +349,20 @@ def dictate(verb: str) -> None:
         log.warning("dictate %s failed: %s", verb, exc)
 
 
+_note: list = [None, "0"]    # the last notify-send, and the notification id it got
+
+
 def notify(msg: str) -> None:
-    subprocess.Popen(["notify-send", "-t", "1500", "Controller", msg],
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Replaces the previous popup instead of stacking. The daemon picks the id
+    # (notify-send -p prints it), so it is read back from the last call once
+    # that has finished; waiting for it would stall the pointer.
+    proc = _note[0]
+    if proc and proc.poll() is not None:
+        _note[1] = proc.stdout.read().strip() or _note[1]
+        proc.stdout.close()
+    _note[0] = subprocess.Popen(["notify-send", "-p", "-r", _note[1], "-t", "1500",
+                                 "Controller", msg],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
 
 
 def find_hidraw(dev: evdev.InputDevice) -> int | None:
@@ -403,6 +422,7 @@ class Mapper:
         self.zoom_next = 0.0                    # when the next zoom/arrow step may fire
         self.resize_acc = [0.0, 0.0]            # RT + right stick: px not yet sent
         self.dragged = False                    # this RT hold has dragged: right stick = workspaces
+        self.resized = False                    # this RT hold has resized (announced once)
         self.resize_next = 0.0                  # when the next resize may be sent
         self.menu_checked = (0.0, False)        # (time, omarchy menu open?)
         self.acc = [0.0, 0.0, 0.0, 0.0]         # dx, dy, wheel_v, wheel_h
@@ -485,6 +505,11 @@ class Mapper:
         else:
             self.tap(bind.keys)
 
+    def announce(self, inputs: str, action: str, plain: bool = False) -> None:
+        # Names what just fired. The cheat sheet's notes ("(hold = drag)") are dropped.
+        if BUTTON_NOTIFY if plain else COMBO_NOTIFY:
+            notify(f"{inputs} → {LABELS.get(action, action.split(' (')[0])}")
+
     def hold(self, owner, combo: list[int]) -> None:
         self.btn_owner[owner] = combo
         for k in combo:
@@ -537,6 +562,7 @@ class Mapper:
                 zone = self.pad_zone(*self.swipe_from)
                 if zone:
                     self.tap([ARROWS[zone]])
+                    self.announce("Touchpad tap", zone.capitalize(), plain=True)
             self.touching = bool(ev.value)
             self.touch_since = time.monotonic()
             self.touch_pos, self.swipe_from = [None, None], None
@@ -585,6 +611,7 @@ class Mapper:
         # Held like a key, so holding the click autorepeats the arrow.
         if zone:
             self.hold("touchclick", [ARROWS[zone]])
+            self.announce("Touchpad click", zone.capitalize(), plain=True)
 
     def on_swipe(self, x: int, y: int) -> None:
         if self.swipe_from is None:
@@ -599,6 +626,7 @@ class Mapper:
         # resting a thumb never changes the volume.
         if self.swipe_axis == "y" and abs(dy) >= VOLUME_STEP:
             self.tap(VOLUME_UP if dy < 0 else VOLUME_DOWN)   # touchpad y grows downward
+            self.announce("Touchpad swipe", "Volume up" if dy < 0 else "Volume down", plain=True)
             self.swipe_from[1] += VOLUME_STEP if dy > 0 else -VOLUME_STEP
 
     def on_hid(self, report: bytes) -> None:
@@ -644,12 +672,23 @@ class Mapper:
             self.guide_fired = True
             if code in GUIDE_COMBOS:
                 self.fire(GUIDE_COMBOS[code])
+                self.announce("PS + " + PARTS[code][1], GUIDE_COMBOS[code].label)
                 return
         if down and self.zoom_mode and code in LB_COMBOS:
             self.fire(LB_COMBOS[code])
+            self.announce("L1 + " + PARTS[code][1], LB_COMBOS[code].label)
             return
         if down and self.trig[e.ABS_Z] and code in LT_COMBOS:
             self.fire(LT_COMBOS[code])
+            self.announce("L2 + " + PARTS[code][1], LT_COMBOS[code].label)
+            return
+        # A layer held + a button with no combo on it: dropped, not the plain
+        # action. L2 + ✕ (right click) and the stick clicks aren't combos.
+        layer = ("PS" if self.guide_since is not None else "L1" if self.zoom_mode
+                 else "L2" if self.trig[e.ABS_Z] and code != e.BTN_SOUTH else None)
+        if down and layer and code in PARTS and \
+                code not in (e.BTN_TL, e.BTN_THUMBL, e.BTN_THUMBR):
+            self.announce(f"{layer} + {PARTS[code][1]}", "No such combo")
             return
 
         if code == ENTER_BTN:
@@ -670,14 +709,19 @@ class Mapper:
             if DICTATE_SOCK:
                 self.btn_owner["dictate"] = []
                 dictate("start")
+                self.announce("R1", "Dictate", plain=True)
         elif code == e.BTN_SOUTH and self.menu_open():
             self.hold(code, [e.KEY_ENTER])   # ✕ confirms in the menu instead of clicking
+            self.announce("✕", "Enter", plain=True)
         elif code == e.BTN_SOUTH and self.trig[e.ABS_Z]:
             self.hold(code, RIGHT_CLICK.keys)   # LT held: ✕ is the right button (hold = drag)
+            self.announce("L2 + ✕", RIGHT_CLICK.label)
         elif code in BASE_HOLD:
             self.hold(code, BASE_HOLD[code].keys)
+            self.announce(PARTS[code][1], BASE_HOLD[code].label, plain=True)
         elif code in BASE_TAP:
             self.tap(BASE_TAP[code].keys)
+            self.announce(PARTS[code][1], BASE_TAP[code].label, plain=True)
 
     def on_enter(self, down: bool) -> None:
         # □ is Enter, but a second press within DOUBLE_TAP_WINDOW makes it
@@ -688,6 +732,7 @@ class Mapper:
         if self.enter_first is not None:
             self.enter_first = None
             self.tap(ENTER_DOUBLE.keys)
+            self.announce("□ □", ENTER_DOUBLE.label)
         else:
             self.enter_first = time.monotonic()
 
@@ -700,6 +745,7 @@ class Mapper:
             self.hold(ENTER_BTN, BASE_HOLD[ENTER_BTN].keys)
         else:
             self.tap(BASE_HOLD[ENTER_BTN].keys)
+        self.announce(PARTS[ENTER_BTN][1], BASE_HOLD[ENTER_BTN].label, plain=True)
 
     def enter_held(self) -> bool:
         try:
@@ -724,6 +770,7 @@ class Mapper:
                 time.monotonic() - self.trig_tapped.pop(code, -1.0) < DOUBLE_TAP_WINDOW:
             self.trig_consumed.add(code)
             self.fire(DOUBLE_TRIGGERS[code])
+            self.announce(f"{PARTS[code][1]} {PARTS[code][1]}", DOUBLE_TRIGGERS[code].label)
             return
         if not now and code in self.trig_consumed:
             self.trig_consumed.discard(code)
@@ -734,6 +781,7 @@ class Mapper:
                     else self.trig_pending.pop(e.ABS_RZ, None) is not None):
             self.trig_consumed.add(e.ABS_RZ)
             self.tap(FULLSCREEN.keys)
+            self.announce("L2 + R2", FULLSCREEN.label)
             return
         if code == e.ABS_Z and code not in DOUBLE_TRIGGERS:
             return                        # LT is only a modifier (see on_button)
@@ -759,11 +807,14 @@ class Mapper:
         names = ("left", "right") if axis == "x" else ("up", "down")
         if value != prev:
             self.unhold(("hat", axis))
+            arrow = names[0] if value < 0 else names[1]
             if value and axis == "y" and self.trig[e.ABS_Z]:
                 # LT held: ↑/↓ = volume, held so Omarchy's binding repeats it.
                 self.hold(("hat", axis), VOLUME_UP if value < 0 else VOLUME_DOWN)
+                self.announce("L2 + D-pad", "Volume up" if value < 0 else "Volume down")
             elif value:
-                self.hold(("hat", axis), [ARROWS[names[0] if value < 0 else names[1]]])
+                self.hold(("hat", axis), [ARROWS[arrow]])
+                self.announce("D-pad", arrow.capitalize(), plain=True)
 
     def rt_held(self) -> bool:
         # RT down as window mode: not still a possible fullscreen chord / double
@@ -778,10 +829,12 @@ class Mapper:
         if not self.rt_held():
             self.unhold("drag")
             self.resize_acc = [0.0, 0.0]
-            self.dragged = False
+            self.dragged = self.resized = False
             return False
         if (lx or ly) and "drag" not in self.btn_owner:
             self.hold("drag", WINDOW_DRAG)
+            if not self.dragged:
+                self.announce("R2 + L-stick", "Move window")
             self.dragged = True
         if self.dragged:
             # Once dragging, the right stick sideways takes the window to
@@ -800,6 +853,9 @@ class Mapper:
             self.resize_acc[1] -= dy
             self.resize_next = now + RESIZE_EVERY
             hypr_dispatch(f"hl.dsp.window.resize({{ x = {dx}, y = {dy}, relative = true }})")
+            if not self.resized:
+                self.announce("R2 + R-stick", "Resize window")
+            self.resized = True
         return True
 
     def move_window(self, dispatch: str) -> None:
@@ -808,6 +864,16 @@ class Mapper:
         self.unhold("drag")
         subprocess.run(["hyprctl", "dispatch", dispatch],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        self.announce("R2 + R-stick", f"Window to workspace {workspace_name()}")
+
+    def to_workspace(self, inputs: str, dispatch: str) -> None:
+        # The popup names the workspace we land on, so wait for the switch.
+        if not COMBO_NOTIFY:
+            hypr_dispatch(dispatch)
+            return
+        subprocess.run(["hyprctl", "dispatch", dispatch],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        self.announce(inputs, f"Workspace {workspace_name()}")
 
     def menu_open(self) -> bool:
         at, is_open = self.menu_checked
@@ -863,16 +929,16 @@ class Mapper:
             pass                                # RT held: right stick resizes
         elif self.trig[e.ABS_Z]:
             # LT held: right stick sideways = workspaces.
-            self.step(rx, lambda: hypr_dispatch(PREV_WS), lambda: hypr_dispatch(NEXT_WS),
-                      WORKSPACE_REPEAT)
+            self.step(rx, lambda: self.to_workspace("L2 + R-stick", PREV_WS),
+                      lambda: self.to_workspace("L2 + R-stick", NEXT_WS), WORKSPACE_REPEAT)
         elif self.zoom_mode:
             # LB + right stick: sideways = workspaces, up/down = zoom. The
             # further-pushed direction wins, so a slightly diagonal push is one.
             if abs(rx) > abs(ry):
-                self.step(rx, lambda: hypr_dispatch(PREV_WS), lambda: hypr_dispatch(NEXT_WS),
-                          WORKSPACE_REPEAT)
+                self.step(rx, lambda: self.to_workspace("L1 + R-stick", PREV_WS),
+                          lambda: self.to_workspace("L1 + R-stick", NEXT_WS), WORKSPACE_REPEAT)
             else:
-                self.step(ry, lambda: self.tap(ZOOM_IN.keys), lambda: self.tap(ZOOM_OUT.keys))
+                self.step(ry, lambda: self.zoom(ZOOM_IN), lambda: self.zoom(ZOOM_OUT))
         elif abs(ry) >= ZOOM_THRESHOLD and self.menu_open():
             self.step(ry, lambda: self.tap([e.KEY_UP]), lambda: self.tap([e.KEY_DOWN]))
         else:
@@ -888,6 +954,10 @@ class Mapper:
                 wrote = True
         if wrote:
             self.ui.syn()
+
+    def zoom(self, bind: Bind) -> None:
+        self.tap(bind.keys)
+        self.announce("L1 + R-stick", bind.label)
 
     def step(self, v: float, negative, positive, repeat: float = ZOOM_REPEAT) -> None:
         # One action per push (up/left = negative), repeating every `repeat`

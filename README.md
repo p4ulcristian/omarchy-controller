@@ -5,6 +5,8 @@ Use a PlayStation DualSense controller as a mouse and keyboard on
 switch windows and workspaces, open the Omarchy menu, all from the couch.
 Press the **mic button** for an on-screen cheat sheet of every binding.
 
+The program itself is called **iris-controller**: `iris-controller.service`, `~/.config/iris-controller/`.
+
 When a Steam game goes fullscreen the controller is handed back to the game
 automatically, and handed back to the desktop when you leave it.
 
@@ -50,12 +52,12 @@ git clone https://github.com/p4ulcristian/omarchy-controller ~/.local/share/omar
 ~/.local/share/omarchy-controller/install.sh
 ```
 
-The installer links the script to `~/.local/bin/omarchy-controller`, links the
+The installer links the script to `~/.local/bin/iris-controller`, links the
 cheat sheet into `~/.config/omarchy/plugins/`, enables it in
 `~/.config/omarchy/shell.json`, and starts a systemd user service. Run it
 again after pulling updates.
 
-Logs: `journalctl --user -u omarchy-controller -f`
+Logs: `journalctl --user -u iris-controller -f`
 
 ## Game mode
 
@@ -75,7 +77,7 @@ game can't lose focus to a neighbouring monitor).
 ## Configuration
 
 Optional. Copy [config.example.toml](config.example.toml) to
-`~/.config/omarchy-controller/config.toml`. It can:
+`~/.config/iris-controller/config.toml`. It can:
 
 - make **R1** push-to-talk dictation with
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
@@ -83,11 +85,11 @@ Optional. Copy [config.example.toml](config.example.toml) to
 - make **R2** dictate and send the text to an Iris server,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
 
-The bindings themselves are the tables at the top of `omarchy_controller.py`.
+The bindings themselves are the tables at the top of `iris_controller.py`.
 After changing them, regenerate the keymap:
 
 ```sh
-XDG_CONFIG_HOME=/nonexistent python3 omarchy_controller.py --keymap > KEYMAP.md
+XDG_CONFIG_HOME=/nonexistent python3 iris_controller.py --keymap > KEYMAP.md
 ```
 
 ## How it works
@@ -100,12 +102,12 @@ it is read from the raw HID report instead.
 ## Uninstall
 
 ```sh
-systemctl --user disable --now omarchy-controller
-rm ~/.local/bin/omarchy-controller ~/.config/systemd/user/omarchy-controller.service
-rm ~/.config/omarchy/plugins/p4ulcristian.controller-help
+systemctl --user disable --now iris-controller
+rm ~/.local/bin/iris-controller ~/.config/systemd/user/iris-controller.service
+rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-help
 ```
 
-Then remove `p4ulcristian.controller-help` from the `plugins` list in
+Then remove `p4ulcristian.iris-controller-help` from the `plugins` list in
 `~/.config/omarchy/shell.json`.
 
 ## License

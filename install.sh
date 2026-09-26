@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Install omarchy-controller for the current user. Safe to run again.
+# Install iris-controller for the current user. Safe to run again.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 SRC=$PWD
-PLUGIN=p4ulcristian.controller-help
+PLUGIN=p4ulcristian.iris-controller-help
 
 python3 -c "import evdev" 2>/dev/null || {
   echo "python-evdev is missing: sudo pacman -S python-evdev" >&2; exit 1; }
 [ -e /usr/lib/udev/rules.d/60-steam-input.rules ] || {
   echo "Controller permissions missing: sudo pacman -S steam-devices, then replug the pad" >&2; exit 1; }
 
-chmod +x omarchy_controller.py
+chmod +x iris_controller.py
 mkdir -p ~/.local/bin ~/.config/omarchy/plugins ~/.config/systemd/user
-ln -sfn "$SRC/omarchy_controller.py" ~/.local/bin/omarchy-controller
+ln -sfn "$SRC/iris_controller.py" ~/.local/bin/iris-controller
 ln -sfn "$SRC/overlay" ~/.config/omarchy/plugins/$PLUGIN
 
 # Enable the cheat sheet plugin in the Omarchy shell.
@@ -35,8 +35,8 @@ PY
   command -v omarchy-shell >/dev/null && omarchy-shell -q shell rescanPlugins || true
 fi
 
-cp systemd/omarchy-controller.service ~/.config/systemd/user/
+cp systemd/iris-controller.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now omarchy-controller
-systemctl --user restart omarchy-controller
-echo "Installed. Logs: journalctl --user -u omarchy-controller -f"
+systemctl --user enable --now iris-controller
+systemctl --user restart iris-controller
+echo "Installed. Logs: journalctl --user -u iris-controller -f"

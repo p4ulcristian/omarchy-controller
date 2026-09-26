@@ -6,7 +6,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
-// DualSense cheat sheet. omarchy-controller summons and hides it each time the
+// DualSense cheat sheet. iris-controller summons and hides it each time the
 // mic button is pressed. Every word comes from the payload (the script's
 // live keymap); this file only knows where each part sits on the pad:
 //   { "parts":  { "cross": { "name": "✕", "actions": ["Enter"] }, ... },
@@ -261,7 +261,7 @@ Item {
     screen: root.targetScreen
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "omarchy-controller-help"
+    WlrLayershell.namespace: "iris-controller-help"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore

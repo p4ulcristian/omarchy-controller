@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "p4ulcristian.controller-help",
+  "id": "p4ulcristian.iris-controller-help",
   "name": "Controller cheat sheet",
   "version": "1.0.0",
   "author": "p4ulcristian",
-  "description": "Hold-to-peek overlay listing what each controller button does. Summoned by omarchy-controller with the live keymap as payload.",
+  "description": "Hold-to-peek overlay listing what each controller button does. Summoned by iris-controller with the live keymap as payload.",
   "kinds": [
     "panel"
   ],

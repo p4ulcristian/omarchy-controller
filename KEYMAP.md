@@ -61,7 +61,6 @@ Press the mic button to toggle it as an overlay.
 | Hold L1 + R-stick → | Next workspace |
 | Hold L1 + R-stick ↑ | Bigger text |
 | Hold L1 + R-stick ↓ | Smaller text |
-| Hold L1 + ✕ | Terminal |
 | Hold L1 + △ | Close window |
 
 ## In the Omarchy menu

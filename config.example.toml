@@ -12,9 +12,9 @@
 # [keyboard]
 # snippets = ["https://", "www.", ".com", "@gmail.com", "~/"]
 
-# Rename actions in the cheat sheet, e.g. when you rebound Super+Enter.
+# Rename actions in the cheat sheet.
 # [labels]
-# "Terminal" = "Claude in ~/Work"
+# "Close window" = "Quit"
 
 # What each press just did is shown: combos flash mid-screen ("L2 + □ ▸ Copy",
 # "L2 + R-stick ▸ Workspace 3"), plain presses get a short notification

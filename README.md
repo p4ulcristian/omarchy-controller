@@ -26,7 +26,7 @@ button):
 | Create | Close window |
 | L1 + right stick ←/→ | Previous / next workspace |
 | L1 + right stick ↑/↓ | Bigger / smaller text |
-| L1 + ✕ / △ | Terminal / close window |
+| L1 + △ | Close window |
 | L2 + ✕ | Right click (hold = drag) |
 | L2 + right stick ←/→ | Previous / next workspace |
 | L2 + right stick ↑/↓ | Bigger / smaller text |

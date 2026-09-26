@@ -77,7 +77,7 @@ def load_config() -> dict:
 CONFIG = load_config()
 # R1: push-to-talk dictation. A Unix socket that takes "start" and "stop".
 DICTATE_SOCK = os.path.expanduser(CONFIG.get("dictate", {}).get("socket", "")) or None
-# Rename actions in the cheat sheet, e.g. "Terminal" = "Claude in ~/Work".
+# Rename actions in the cheat sheet, e.g. "Close window" = "Quit".
 LABELS: dict[str, str] = CONFIG.get("labels", {})
 # A short popup naming each combo as it fires ("L2 + □ → Copy"), and each
 # plain press ("□ → Enter").
@@ -139,7 +139,6 @@ PREV_WS = 'hl.dsp.focus({ workspace = "r-1" })'
 GUIDE_COMBOS: dict[int, Bind] = {}
 # LB held + another button: one-shot chord.
 LB_COMBOS = {
-    e.BTN_SOUTH: Bind([SUPER, e.KEY_ENTER], "Terminal"),
     e.BTN_NORTH: Bind([SUPER, e.KEY_W], "Close window"),          # physical Y / Triangle
 }
 # Touchpad swipe up/down: the media keys, so Omarchy's volume binding and OSD apply.

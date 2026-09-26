@@ -25,13 +25,13 @@
 
 # Your own buttons. Each [[bind]] adds one; they show up in the cheat sheet.
 #   input: "L1 + <button>", "PS + <button>", "R2 + <D-pad ↑ → ↓ ←>",
-#          "R2 double" or "L2 double"
+#          "R2 double" or "L2 double" (an R2 double tap delays every R2 hold by 0.25 s)
 #          buttons: ✕ ○ □ △ (or x o square triangle), L1 R1 L2 R2 L3 R3,
 #          Options, Create, PS
 #   run:   a shell command, or keys = "SUPER + W" to send a key combo
 #   label: the name in the cheat sheet
 # [[bind]]
-# input = "R2 double"
+# input = "L2 double"
 # run = "omarchy-launch-webapp https://example.com"
 # label = "Open my web app"
 #

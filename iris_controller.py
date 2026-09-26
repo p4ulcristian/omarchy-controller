@@ -118,6 +118,7 @@ MOVE_NEXT_WS = 'hl.dsp.window.move({ workspace = "r+1" })'
 MOVE_PREV_WS = 'hl.dsp.window.move({ workspace = "r-1" })'
 RIGHT_CLICK = Bind([e.BTN_RIGHT], "Right click")                # LT + ✕
 FULLSCREEN = Bind([SUPER, e.KEY_F], "Fullscreen")               # LT + RT together
+REFRESH = Bind([CTRL, e.KEY_R], "Refresh")                      # RT + △
 # LT + D-pad ←/→: back / forward, as in browsers and file managers.
 NAV_BACK = Bind([ALT, e.KEY_LEFT], "Back")
 NAV_FORWARD = Bind([ALT, e.KEY_RIGHT], "Forward")
@@ -145,10 +146,9 @@ LB_COMBOS = {
 VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}
 
-# L2/R2 double tap. R2 toggles floating; a [[bind]] "R2 double" / "L2 double" replaces or adds.
-DOUBLE_TRIGGERS: dict[int, Bind] = {
-    e.ABS_RZ: Bind([SUPER, e.KEY_T], "Toggle floating / tiling"),   # Omarchy's Super+T
-}
+# L2/R2 double tap: user binds only ("R2 double" / "L2 double" in [[bind]]).
+# An R2 double tap makes every R2 hold wait DOUBLE_TAP_WINDOW before it counts.
+DOUBLE_TRIGGERS: dict[int, Bind] = {}
 # RT held + D-pad direction: user binds only ("R2 + ↑" in [[bind]]).
 RT_DPAD: dict[str, Bind] = {}
 DPAD_NAMES = {"↑": "up", "→": "right", "↓": "down", "←": "left",
@@ -213,7 +213,7 @@ load_binds()
 OUT_KEYS = sorted(
     {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, LT_COMBOS, DOUBLE_TRIGGERS, RT_DPAD)
      for b in m.values() for k in b.keys}
-    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, NAV_BACK, NAV_FORWARD, ZOOM_IN, ZOOM_OUT) for k in b.keys}
+    | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, REFRESH, NAV_BACK, NAV_FORWARD, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
     | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}
     | {SUPER, SHIFT, CTRL, ALT, e.KEY_A, e.KEY_Z}
@@ -312,6 +312,7 @@ def keymap() -> dict:
     add(e.ABS_RZ, "Hold + right stick: resize window")
     add(e.ABS_RZ, "Hold + ○: on-screen keyboard")
     add(e.ABS_RZ, "Hold + □: space")
+    add(e.ABS_RZ, "Hold + △: refresh")
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
@@ -336,6 +337,7 @@ def keymap() -> dict:
                "action": "Take window to prev / next workspace"}]
     combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(e.BTN_EAST)], "action": "On-screen keyboard"})
     combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(ENTER_BTN)], "action": "Space"})
+    combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(e.BTN_NORTH)], "action": REFRESH.label})
     combos += [{"keys": ["Hold " + name(e.ABS_RZ), "D-pad " + DPAD_ARROWS[d]], "action": b.label}
                for d, b in RT_DPAD.items()]
     combos += [{"keys": ["Hold " + name(e.ABS_Z), name(c)], "action": b.label}
@@ -773,6 +775,10 @@ class Mapper:
         if down and code == e.BTN_WEST and self.rt_held():
             self.hold("rt_space", [e.KEY_SPACE])  # RT + □: space, held so it repeats
             self.announce("R2 + □", "Space")
+            return
+        if down and code == e.BTN_NORTH and self.rt_held():
+            self.tap(REFRESH.keys)                # RT + △: refresh
+            self.announce("R2 + △", REFRESH.label)
             return
         if self.osk_open and self.osk_button(code, down):
             return

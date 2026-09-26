@@ -37,7 +37,7 @@ button):
 | R2 held + left stick | Move the window |
 | R2 held + right stick | Resize the window (→/↓ bigger, ←/↑ smaller) |
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
-| R2 double tap | Toggle the window floating / tiling |
+| R2 + △ | Refresh (Ctrl + R) |
 | R2 + □ | Space (hold to repeat) |
 | R2 + ○ | On-screen keyboard: D-pad moves, ✕ types (hold to repeat), □ space, △ backspace, L1 held shift, ○ closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |

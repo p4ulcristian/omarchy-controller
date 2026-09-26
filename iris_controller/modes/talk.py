@@ -1,8 +1,8 @@
-"""R1: talk. Held = push-to-talk dictation through a Unix socket that takes
-"start" and "stop" (omarchy-dictation). Tap, then hold = dictate, and on
-release post the transcript to an Iris server instead of typing it; that
-needs the socket to also take "stop-return". Tapped twice = the on-screen
-keyboard opens / closes."""
+"""Talk. R1 held = push-to-talk dictation through a Unix socket that takes
+"start" and "stop" (omarchy-dictation); R1 tapped twice = the on-screen
+keyboard opens / closes. L1 held = dictate, and on release post the
+transcript to an Iris server instead of typing it (the socket must also take
+"stop-return"); L1 tapped twice = open Iris ([iris] open)."""
 
 from __future__ import annotations
 
@@ -16,13 +16,16 @@ import time
 import urllib.request
 
 from ..core.config import CONFIG
-from ..keymap.bindings import DOUBLE_TAP_WINDOW
+from evdev import ecodes as e
+
+from ..keymap.bindings import DOUBLE_TAP_WINDOW, Bind
 
 log = logging.getLogger("iris-controller")
 
 DICTATE_SOCK = os.path.expanduser(CONFIG.get("dictate", {}).get("socket", "")) or None
 IRIS = CONFIG.get("iris", {})
 IRIS_URL = IRIS.get("url") if DICTATE_SOCK else None
+IRIS_OPEN = IRIS.get("open")          # shell command that opens Iris (L1 twice)
 
 
 def dictate(verb: str) -> None:
@@ -61,44 +64,63 @@ def short(text: str, n: int = 60) -> str:
     return text if len(text) <= n else text[:n - 1] + "…"
 
 
+class Taps:
+    """One button's presses: is this release the end of a quick double tap?"""
+
+    def __init__(self) -> None:
+        self.down = 0.0          # when it went down
+        self.tapped = -1.0       # when a quick tap ended: a press soon after is a second tap
+        self.second = False      # this press is that second tap
+
+    def press(self) -> None:
+        self.down = time.monotonic()
+        self.second = self.down - self.tapped < DOUBLE_TAP_WINDOW
+
+    def release(self) -> tuple[bool, bool]:
+        """(quick, double): a short press, and a short second one of a pair."""
+        now = time.monotonic()
+        quick = now - self.down < DOUBLE_TAP_WINDOW
+        second, self.second = self.second, False
+        # A quick tap may start a double tap; the second one never starts another.
+        self.tapped = now if quick and not second else -1.0
+        return quick, quick and second
+
+
 class Talk:
     def __init__(self, m) -> None:
         self.m = m
-        self.active: str | None = None          # "dictate" or "iris" while R1 is held
-        self.r1_down = 0.0                      # when R1 went down
-        self.r1_tapped = -1.0                   # when a quick R1 tap ended: a press soon after talks to Iris
-        self.second = False                     # this press came right after a tap: a quick release = keyboard
+        self.active: str | None = None          # "dictate" (R1) or "iris" (L1) while held
+        self.taps = {e.BTN_TR: Taps(), e.BTN_TL: Taps()}
 
-    def press(self) -> None:
-        now = time.monotonic()
-        self.r1_down = now
-        self.second = now - self.r1_tapped < DOUBLE_TAP_WINDOW
-        if IRIS_URL and now - self.r1_tapped < DOUBLE_TAP_WINDOW:
-            self.r1_tapped = -1.0
-            self.active = "iris"                 # sent to Iris on release
-            dictate("start")
-            self.m.flash.show("R1 + R1", "Talk to Iris")
-        elif DICTATE_SOCK:
+    def press(self, code) -> None:
+        self.taps[code].press()
+        if self.active:
+            return
+        if code == e.BTN_TR and DICTATE_SOCK:
             self.active = "dictate"
             dictate("start")
             self.m.flash.show("R1", "Dictate", plain=True)
+        elif code == e.BTN_TL and IRIS_URL:
+            self.active = "iris"                 # sent to Iris on release
+            dictate("start")
+            self.m.flash.show("L1", "Talk to Iris", plain=True)
 
-    def release(self) -> None:
-        active, self.active = self.active, None
-        quick = time.monotonic() - self.r1_down < DOUBLE_TAP_WINDOW
-        second, self.second = self.second, False
-        # A quick tap may start a double tap; the second one never starts another.
-        self.r1_tapped = time.monotonic() if quick and not second else -1.0
-        if second and quick:                     # tap, tap: the keyboard, nothing said
-            if active:
-                dictate("stop")
+    def release(self, code) -> None:
+        quick, double = self.taps[code].release()
+        mine = self.active == ("dictate" if code == e.BTN_TR else "iris")
+        if mine:
+            self.active = None
+            if quick or code == e.BTN_TR:
+                dictate("stop")   # a quick tap is shorter than dictation's minimum: ignored
+            else:
+                threading.Thread(target=self.send_to_iris, daemon=True).start()
+        if double and code == e.BTN_TR:
             kb = self.m.keyboard
             kb.toggle(not kb.open)
             self.m.flash.show("R1 + R1", "Keyboard " + ("on" if kb.open else "off"))
-        elif active == "iris":
-            threading.Thread(target=self.send_to_iris, daemon=True).start()
-        elif active == "dictate":
-            dictate("stop")   # a quick tap is shorter than dictation's minimum: ignored
+        elif double and IRIS_OPEN:
+            self.m.out.fire(Bind([], "Open Iris", IRIS_OPEN))
+            self.m.flash.show("L1 + L1", "Open Iris")
 
     def stop(self) -> None:
         if self.active:

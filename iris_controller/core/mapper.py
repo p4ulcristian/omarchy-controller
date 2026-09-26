@@ -191,6 +191,7 @@ class Mapper:
                 flash.show("PS + " + PARTS[code][1], PS_COMBOS[code].label)
                 return
         if down and self.l1_held and code in L1_COMBOS:
+            self.talk.stop()                     # an L1 combo, not talking to Iris
             out.fire(L1_COMBOS[code])
             flash.show("L1 + " + PARTS[code][1], L1_COMBOS[code].label)
             return
@@ -212,16 +213,17 @@ class Mapper:
             return
         if code == e.BTN_TL:
             self.l1_held = down
+            self.talk.press(code) if down else self.talk.release(code)
             return
 
         if not down:
             if code == e.BTN_TR:
-                self.talk.release()
+                self.talk.release(code)
             out.unhold(code)
             return
 
         if code == e.BTN_TR:
-            self.talk.press()
+            self.talk.press(code)
         elif code == e.BTN_SOUTH and hyprland.menu_open():
             out.hold(code, [e.KEY_ENTER])   # ✕ confirms in the menu instead of clicking
             flash.show("✕", "Enter", plain=True)

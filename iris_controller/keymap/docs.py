@@ -6,7 +6,7 @@ from __future__ import annotations
 from evdev import ecodes as e
 
 from ..core.config import LABELS
-from ..modes.talk import DICTATE_SOCK, IRIS_URL
+from ..modes.talk import DICTATE_SOCK, IRIS_OPEN, IRIS_URL
 from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ZOOM_IN,
                        ZOOM_OUT, BASE_HOLD, BASE_TAP, DPAD_ARROWS)
@@ -36,7 +36,9 @@ def keymap() -> dict:
     if DICTATE_SOCK:
         add(e.BTN_TR, "Hold: dictate")
     if IRIS_URL:
-        add(e.BTN_TR, "Tap, then hold: talk to Iris (release to send)")
+        add(e.BTN_TL, "Hold: talk to Iris (release to send)")
+    if IRIS_OPEN:
+        add(e.BTN_TL, "Twice: open Iris")
     if L1_COMBOS:
         add(e.BTN_TL, "Hold: combo layer")
     add(e.BTN_TR, "Twice: on-screen keyboard")
@@ -120,8 +122,10 @@ def cheatsheet() -> dict:
              "lstick": "Pointer", "rstick": "Scroll", "options": "Omarchy menu", "ps": "Game mode",
              "l2": "Shortcuts", "r2": "Window mode", "dpad": "Arrow keys", "touchpad": "Arrow keys",
              "mic": "This sheet"}
-    if DICTATE_SOCK or IRIS_URL:
+    if DICTATE_SOCK:
         short["r1"] = "Voice"
+    if IRIS_URL or IRIS_OPEN:
+        short["l1"] = "Iris"
     if L1_COMBOS:
         short["l1"] = "Your combos"
     for pid, part in parts.items():
@@ -139,7 +143,9 @@ def cheatsheet() -> dict:
     if DICTATE_SOCK:
         voice.append(row(["R1 hold"], "Dictate"))
     if IRIS_URL:
-        voice.append(row(["R1 tap, hold"], "Talk to Iris"))
+        voice.append(row(["L1 hold"], "Talk to Iris"))
+    if IRIS_OPEN:
+        voice.append(row(["L1", "L1"], "Open Iris"))
     categories = [
         {"title": "Pointer", "rows": [
             row(["L-stick"], "Move pointer"),

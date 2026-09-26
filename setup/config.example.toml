@@ -7,12 +7,13 @@
 # [dictate]
 # socket = "/run/user/1000/iris-dictation/iris-dictation.sock"
 
-# R1 tap, then hold = dictate and send the transcript to an Iris server instead
-# of typing it. Needs the dictate socket above to also accept "stop-return"
+# L1 held = dictate and send the transcript to an Iris server instead of
+# typing it. Needs the dictate socket above to also accept "stop-return"
 # (stop and reply with the text). The secret is read from a KEY=value file so
-# it stays out of this one.
+# it stays out of this one. L1 tapped twice runs `open`.
 # [iris]
 # url = "http://127.0.0.1:4270/api/chat"
+# open = "omarchy-launch-webapp http://127.0.0.1:4270"
 # secret_file = "~/path/to/.env"
 # secret_key = "IRIS_INTERNAL_SECRET"
 

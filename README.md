@@ -90,8 +90,8 @@ Optional. Copy [setup/config.example.toml](setup/config.example.toml) to
 - make **R1** push-to-talk dictation with
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
-- make **R1 tap, then hold** talk to an Iris server: dictate, and on release
-  the transcript is posted to Iris instead of typed,
+- make **L1 held** talk to an Iris server: dictate, and on release the
+  transcript is posted to Iris instead of typed; **L1 twice** opens Iris,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
 - turn off the flash: what each press did appears in the middle of the
   screen (the buttons pop in, then what they did: "L2 + □ ▸ Copy",
@@ -124,7 +124,7 @@ iris_controller/
 │                   loop (main.py) and reading config.toml (config.py)
 ├── device/         the controller: finder, touchpad, mic button
 ├── keymap/         what each button does: bindings, your [[bind]]s, the keymap doc
-├── modes/          window (R2 held), game, talk (R1)
+├── modes/          window (R2 held), game, talk (R1, L1)
 ├── output/         virtual mouse + keyboard, Hyprland commands
 └── screen/         what you see, each an Omarchy shell plugin:
     ├── flash/      what a press just did, mid-screen

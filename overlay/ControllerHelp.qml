@@ -20,28 +20,29 @@ Item {
   property var combos: []
   property var menu: []
 
-  // The sheet is laid out at this size and scaled down to fit the monitor.
-  readonly property int sheetW: 1700
-  readonly property int sheetH: 900
-  readonly property int pad: 36
+  // The sheet is laid out this wide, as tall as its content, and the card
+  // is scaled down until it fits the monitor.
+  readonly property int sheetW: 1900
+  readonly property int pad: 40
 
-  // Controller drawing: authored in a 1000 x 640 box, placed mid-sheet.
+  // Controller photo: anchors are in its 1000 x 703 box, placed mid-sheet.
   readonly property real padScale: 0.7
   readonly property real padX: (sheetW - 1000 * padScale) / 2
   readonly property real padY: 96
 
   // Label columns either side of the drawing, and the band they may use.
-  readonly property int colW: 430
-  readonly property int leftColRight: 450
-  readonly property int rightColLeft: sheetW - 450
-  readonly property int bandTop: 70
-  readonly property int bandBottom: 550
+  readonly property int colW: 540
+  readonly property int leftColRight: 560
+  readonly property int rightColLeft: sheetW - 560
+  readonly property int bandTop: 80
+  readonly property int bandBottom: 560
   readonly property int lineH: 28
   readonly property int labelGap: 12
+  readonly property int listsTop: 610
 
   readonly property color ink: Color.popups.text
   readonly property color faint: Util.alpha(Color.popups.text, 0.55)
-  readonly property color face: Util.alpha(Color.popups.text, 0.07)
+  readonly property color hud: Color.accent
 
   // PlayStation symbol colors.
   readonly property var symbolColor: ({
@@ -51,13 +52,13 @@ Item {
   // Hardware layout: where the leader line touches each part (drawing units),
   // and which side of the sheet its label goes.
   readonly property var anchorsLeft: ({
-    "l2": [215, 20], "l1": [205, 62], "create": [300, 112], "touchpad": [400, 150],
-    "dpad": [168, 230], "lstick": [340, 362], "mic": [490, 440]
+    "l2": [180, 10], "l1": [128, 42], "create": [267, 80], "touchpad": [420, 130],
+    "dpad": [150, 190], "lstick": [330, 330], "mic": [485, 380]
   })
   readonly property var anchorsRight: ({
-    "r2": [785, 20], "r1": [795, 62], "options": [700, 112], "triangle": [800, 158],
-    "circle": [884, 230], "square": [740, 238], "cross": [800, 314],
-    "rstick": [660, 362], "ps": [512, 396]
+    "r2": [820, 10], "r1": [872, 42], "options": [733, 80], "triangle": [810, 115],
+    "circle": [885, 190], "square": [738, 190], "cross": [810, 262],
+    "rstick": [670, 330], "ps": [505, 318]
   })
 
   function sheetPoint(a) { return [padX + a[0] * padScale, padY + a[1] * padScale] }
@@ -91,6 +92,9 @@ Item {
   readonly property var leftLabels: layoutSide(anchorsLeft)
   readonly property var rightLabels: layoutSide(anchorsRight)
 
+  // Combos split over two columns so the lists stay short.
+  readonly property int comboSplit: Math.ceil(combos.length / 2)
+
   readonly property var targetScreen: {
     var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
     var screens = Quickshell.screens
@@ -119,8 +123,10 @@ Item {
     textFormat: Text.PlainText
     font.family: Style.font.family
     font.bold: true
-    font.pixelSize: root.symbolColor[partId] ? 24 : 19
-    color: root.symbolColor[partId] || root.ink
+    font.pixelSize: root.symbolColor[partId] ? 24 : 17
+    font.letterSpacing: root.symbolColor[partId] ? 0 : 1.5
+    font.capitalization: Font.AllUppercase
+    color: root.symbolColor[partId] || root.hud
   }
 
   // One callout: name and actions, aligned toward the drawing.
@@ -160,7 +166,9 @@ Item {
             horizontalAlignment: leftSide ? Text.AlignRight : Text.AlignLeft
             font.family: Style.font.family
             font.pixelSize: 18
-            color: Util.alpha(root.ink, 0.82)
+            fontSizeMode: Text.HorizontalFit   // an overlong line shrinks, never spills
+            minimumPixelSize: 12
+            color: Util.alpha(root.ink, 0.85)
           }
         }
       }
@@ -178,11 +186,11 @@ Item {
       return ""
     }
     implicitWidth: keyText.implicitWidth + 20
-    implicitHeight: 34
-    radius: 6
-    color: Util.alpha(root.ink, 0.08)
+    implicitHeight: 32
+    radius: 2
+    color: Util.alpha(root.hud, 0.08)
     border.width: 1
-    border.color: Util.alpha(root.ink, 0.25)
+    border.color: Util.alpha(root.hud, 0.4)
     Text {
       id: keyText
       anchors.centerIn: parent
@@ -190,24 +198,38 @@ Item {
       text: parent.label
       font.family: Style.font.family
       font.bold: true
-      font.pixelSize: parent.symbolId ? 20 : 17
+      font.pixelSize: parent.symbolId ? 20 : 16
       color: root.symbolColor[parent.symbolId] || root.ink
     }
   }
 
-  component ComboList: Column {
+  // "// TITLE ────────" section header.
+  component SectionTitle: Row {
     property string title: ""
-    property var rows: []
-    spacing: 10
-
+    width: parent ? parent.width : 0
+    spacing: 14
     Text {
+      id: titleText
       textFormat: Text.PlainText
-      text: parent.title
+      text: "// " + parent.title
       font.family: Style.font.family
       font.bold: true
-      font.pixelSize: 20
-      color: Color.accent
+      font.pixelSize: 17
+      font.letterSpacing: 3
+      font.capitalization: Font.AllUppercase
+      color: root.hud
     }
+    Rectangle {
+      anchors.verticalCenter: titleText.verticalCenter
+      width: parent.width - titleText.width - parent.spacing
+      height: 1
+      color: Util.alpha(root.hud, 0.3)
+    }
+  }
+
+  component ComboRows: Column {
+    property var rows: []
+    spacing: 10
 
     Repeater {
       model: parent.rows
@@ -234,11 +256,11 @@ Item {
         }
 
         Text {
-          text: "→"
+          text: "▸"
           anchors.verticalCenter: parent.verticalCenter
           font.family: Style.font.family
           font.pixelSize: 18
-          color: root.faint
+          color: root.hud
         }
 
         Text {
@@ -269,63 +291,173 @@ Item {
     mask: Region {}
 
     readonly property real fit: Math.min(1,
-      (panel.width * 0.94) / (root.sheetW + 2 * root.pad),
-      (panel.height * 0.92) / (root.sheetH + 2 * root.pad))
+      (panel.width * 0.94) / card.width,
+      (panel.height * 0.92) / card.height)
 
-    // Dim the desktop a little so the see-through card stays readable.
+    // Dim the desktop so the card reads as a HUD over it.
     Rectangle {
       anchors.fill: parent
-      color: Util.alpha(Color.background, 0.4)
+      color: Util.alpha(Color.background, 0.55)
     }
 
-    BorderSurface {
+    Item {
       id: card
       anchors.centerIn: parent
       width: root.sheetW + 2 * root.pad
-      height: root.sheetH + 2 * root.pad
+      height: sheet.height + 2 * root.pad
       scale: panel.fit
-      color: Util.alpha(Color.background, 0.85)
-      borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
-      radius: Style.cornerRadius
+
+      readonly property int cut: 28   // chamfered corners
+
+      // Frame: chamfered top-left and bottom-right, brackets on the others.
+      Shape {
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+          strokeColor: Util.alpha(root.hud, 0.55); strokeWidth: 1.5
+          fillColor: Util.alpha(Color.background, 0.94)
+          PathSvg {
+            path: "M " + card.cut + " 0 L " + card.width + " 0 L " + card.width + " " + (card.height - card.cut)
+                + " L " + (card.width - card.cut) + " " + card.height + " L 0 " + card.height
+                + " L 0 " + card.cut + " Z"
+          }
+        }
+        ShapePath {
+          strokeColor: root.hud; strokeWidth: 4; fillColor: "transparent"
+          capStyle: ShapePath.FlatCap
+          PathSvg {
+            path: "M " + (card.width - 70) + " 2 L " + (card.width - 2) + " 2 L " + (card.width - 2) + " 70 "
+                + "M 2 " + (card.height - 70) + " L 2 " + (card.height - 2) + " L 70 " + (card.height - 2)
+                + " M " + (card.cut + 4) + " 2 L " + (card.cut + 90) + " 2"
+          }
+        }
+      }
+
+      // Faint grid behind everything.
+      Canvas {
+        anchors.fill: parent
+        anchors.margins: 2
+        property color line: Util.alpha(root.hud, 0.05)
+        onLineChanged: requestPaint()
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onPaint: {
+          var ctx = getContext("2d")
+          ctx.reset()
+          ctx.strokeStyle = line
+          ctx.lineWidth = 1
+          for (var x = 40; x < width; x += 40) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke()
+          }
+          for (var y = 40; y < height; y += 40) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke()
+          }
+        }
+      }
 
       Item {
         id: sheet
         x: root.pad
         y: root.pad
         width: root.sheetW
-        height: root.sheetH
+        height: lists.y + lists.height
 
         // Header
         Text {
-          id: title
+          id: tag
           textFormat: Text.PlainText
-          text: "DualSense"
+          text: "◢ IRIS·CTRL"
+          font.family: Style.font.family
+          font.bold: true
+          font.pixelSize: 15
+          font.letterSpacing: 3
+          color: root.hud
+        }
+        Text {
+          id: title
+          anchors.left: tag.right
+          anchors.leftMargin: 18
+          anchors.baseline: tag.baseline
+          textFormat: Text.PlainText
+          text: "DUALSENSE // INPUT MAP"
           font.family: Style.font.family
           font.bold: true
           font.pixelSize: 30
+          font.letterSpacing: 4
           color: root.ink
         }
-        Text {
-          anchors.baseline: title.baseline
+        Row {
           anchors.right: parent.right
-          textFormat: Text.PlainText
-          text: "press Mic again to close"
-          font.family: Style.font.family
-          font.pixelSize: 16
-          color: root.faint
+          anchors.verticalCenter: title.verticalCenter
+          spacing: 10
+          Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 9; height: 9; radius: 4.5
+            color: root.hud
+            SequentialAnimation on opacity {
+              running: root.opened
+              loops: Animation.Infinite
+              NumberAnimation { to: 0.2; duration: 700 }
+              NumberAnimation { to: 1; duration: 700 }
+            }
+          }
+          Text {
+            textFormat: Text.PlainText
+            text: "LINK ACTIVE · MIC TO CLOSE"
+            font.family: Style.font.family
+            font.pixelSize: 15
+            font.letterSpacing: 2
+            color: root.faint
+          }
+        }
+        Rectangle {
+          y: title.y + title.height + 12
+          width: parent.width
+          height: 1
+          color: Util.alpha(root.hud, 0.3)
         }
 
-        // Leader lines: anchor dot, diagonal to the column, short run into the label.
+        // Soft glow behind the pad.
+        Rectangle {
+          x: root.padX + 60
+          y: root.padY + 20
+          width: 1000 * root.padScale - 120
+          height: 703 * root.padScale - 40
+          radius: height / 2
+          gradient: Gradient {
+            GradientStop { position: 0; color: Util.alpha(root.hud, 0.0) }
+            GradientStop { position: 0.5; color: Util.alpha(root.hud, 0.10) }
+            GradientStop { position: 1; color: Util.alpha(root.hud, 0.0) }
+          }
+        }
+
+        // The controller: Sony's product photo, fetched by install.sh (not in
+        // the repo), shown in a 1000 x 703 box the anchors are measured in.
+        Image {
+          x: root.padX
+          y: root.padY
+          width: 1000 * root.padScale
+          height: 703 * root.padScale
+          source: "dualsense.png"
+          fillMode: Image.PreserveAspectFit
+          smooth: true
+          mipmap: true
+        }
+
+        // Leader lines: from the part, diagonal to the column, short run into the label.
         Canvas {
           id: leaders
           anchors.fill: parent
           antialiasing: true
+          z: 1
           readonly property var labels: root.leftLabels.concat(root.rightLabels)
+          property color line: Util.alpha(root.hud, 0.55)
           onLabelsChanged: requestPaint()
+          onLineChanged: requestPaint()
           onPaint: {
             var ctx = getContext("2d")
             ctx.reset()
-            ctx.strokeStyle = Util.alpha(root.ink, 0.35)
+            ctx.strokeStyle = line
             ctx.lineWidth = 1.5
             for (var i = 0; i < labels.length; i++) {
               var l = labels[i]
@@ -337,21 +469,34 @@ Item {
               ctx.lineTo(edge + (left ? 30 : -30), ly)
               ctx.lineTo(edge, ly)
               ctx.stroke()
+              ctx.fillStyle = line
+              ctx.fillRect(edge - (left ? 0 : 4), ly - 2, 4, 4)
             }
           }
         }
 
+        // Targets on each part: a ring around a dot.
         Repeater {
           model: root.leftLabels.concat(root.rightLabels)
-          Rectangle {
+          Item {
             required property var modelData
-            x: modelData.ax - 4
-            y: modelData.ay - 4
-            width: 8
-            height: 8
-            radius: 4
-            color: Color.accent
+            x: modelData.ax - 8
+            y: modelData.ay - 8
+            width: 16
+            height: 16
             z: 2
+            Rectangle {
+              anchors.fill: parent
+              radius: 8
+              color: "transparent"
+              border.width: 1.5
+              border.color: root.hud
+            }
+            Rectangle {
+              anchors.centerIn: parent
+              width: 6; height: 6; radius: 3
+              color: root.hud
+            }
           }
         }
 
@@ -364,155 +509,29 @@ Item {
           Callout { required property var modelData; entry: modelData; leftSide: false }
         }
 
-        // The controller, drawn in its own 1000 x 640 box.
-        Item {
-          x: root.padX
-          y: root.padY
-          width: 1000
-          height: 640
-          scale: root.padScale
-          transformOrigin: Item.TopLeft
+        // Combos and menu keys, under the drawing. The sheet ends where they do.
+        Row {
+          id: lists
+          y: root.listsTop
+          width: root.sheetW
+          spacing: 60
 
-          Shape {
-            anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
-
-            // L2 / R2 triggers (behind), L1 / R1 bumpers.
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 150 44 C 160 8, 280 6, 292 40 L 286 50 C 250 34, 180 36, 158 56 Z" }
-            }
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 850 44 C 840 8, 720 6, 708 40 L 714 50 C 750 34, 820 36, 842 56 Z" }
-            }
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 110 84 C 150 52, 270 48, 318 70 L 312 82 C 260 64, 160 70, 126 94 Z" }
-            }
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 890 84 C 850 52, 730 48, 682 70 L 688 82 C 740 64, 840 70, 874 94 Z" }
-            }
-
-            // Body.
-            ShapePath {
-              strokeColor: Util.alpha(root.ink, 0.7); strokeWidth: 3.5; fillColor: root.face
-              PathSvg {
-                path: "M 150 88 C 250 66, 320 74, 334 86 L 666 86 C 680 74, 750 66, 850 88 "
-                    + "C 940 104, 975 176, 985 286 C 1000 426, 990 562, 930 612 "
-                    + "C 880 652, 792 642, 752 592 C 712 542, 682 472, 600 462 L 400 462 "
-                    + "C 318 472, 288 542, 248 592 C 208 642, 120 652, 70 612 "
-                    + "C 10 562, 0 426, 15 286 C 25 176, 60 104, 150 88 Z"
-              }
-            }
-
-            // Touchpad.
-            ShapePath {
-              strokeColor: Util.alpha(root.ink, 0.5); strokeWidth: 3; fillColor: Util.alpha(root.ink, 0.05)
-              PathSvg { path: "M 342 92 L 658 92 L 648 256 Q 646 274 628 274 L 372 274 Q 354 274 352 256 Z" }
-            }
-
-            // Create and Options.
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 296 98 Q 304 94 308 102 L 312 128 Q 312 136 304 136 Q 298 136 296 128 Z" }
-            }
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 704 98 Q 696 94 692 102 L 688 128 Q 688 136 696 136 Q 702 136 704 128 Z" }
-            }
-
-            // D-pad: four arrow-tipped pads.
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg {
-                path: "M 180 170 L 210 170 L 210 205 L 195 220 L 180 205 Z "
-                    + "M 180 290 L 210 290 L 210 255 L 195 240 L 180 255 Z "
-                    + "M 135 215 L 135 245 L 170 245 L 185 230 L 170 215 Z "
-                    + "M 255 215 L 255 245 L 220 245 L 205 230 L 220 215 Z"
-              }
-            }
-
-            // Sticks: well and cap.
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: "transparent"
-              PathSvg {
-                path: "M 300 362 A 60 60 0 1 0 420 362 A 60 60 0 1 0 300 362 Z "
-                    + "M 580 362 A 60 60 0 1 0 700 362 A 60 60 0 1 0 580 362 Z"
-              }
-            }
-            ShapePath {
-              strokeColor: Util.alpha(root.ink, 0.7); strokeWidth: 3; fillColor: Util.alpha(root.ink, 0.1)
-              PathSvg {
-                path: "M 318 362 A 42 42 0 1 0 402 362 A 42 42 0 1 0 318 362 Z "
-                    + "M 598 362 A 42 42 0 1 0 682 362 A 42 42 0 1 0 598 362 Z"
-              }
-            }
-
-            // PS button and mic button.
-            ShapePath {
-              strokeColor: Util.alpha(root.ink, 0.7); strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 482 400 A 18 18 0 1 0 518 400 A 18 18 0 1 0 482 400 Z" }
-            }
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg { path: "M 480 434 L 520 434 Q 526 434 526 440 Q 526 446 520 446 L 480 446 Q 474 446 474 440 Q 474 434 480 434 Z" }
-            }
-
-            // Face button rings.
-            ShapePath {
-              strokeColor: root.faint; strokeWidth: 3; fillColor: root.face
-              PathSvg {
-                path: "M 770 170 A 30 30 0 1 0 830 170 A 30 30 0 1 0 770 170 Z "
-                    + "M 830 230 A 30 30 0 1 0 890 230 A 30 30 0 1 0 830 230 Z "
-                    + "M 770 290 A 30 30 0 1 0 830 290 A 30 30 0 1 0 770 290 Z "
-                    + "M 710 230 A 30 30 0 1 0 770 230 A 30 30 0 1 0 710 230 Z"
-              }
-            }
-
-            // Face symbols, in PlayStation colors.
-            ShapePath {  // triangle
-              strokeColor: root.symbolColor.triangle; strokeWidth: 4; fillColor: "transparent"
-              joinStyle: ShapePath.RoundJoin
-              PathSvg { path: "M 800 156 L 813 180 L 787 180 Z" }
-            }
-            ShapePath {  // circle
-              strokeColor: root.symbolColor.circle; strokeWidth: 4; fillColor: "transparent"
-              PathSvg { path: "M 846 230 A 14 14 0 1 0 874 230 A 14 14 0 1 0 846 230 Z" }
-            }
-            ShapePath {  // cross
-              strokeColor: root.symbolColor.cross; strokeWidth: 4; fillColor: "transparent"
-              capStyle: ShapePath.RoundCap
-              PathSvg { path: "M 789 279 L 811 301 M 811 279 L 789 301" }
-            }
-            ShapePath {  // square
-              strokeColor: root.symbolColor.square; strokeWidth: 4; fillColor: "transparent"
-              joinStyle: ShapePath.RoundJoin
-              PathSvg { path: "M 729 219 L 751 219 L 751 241 L 729 241 Z" }
+          Column {
+            width: (root.sheetW - 60) * 2 / 3
+            spacing: 18
+            SectionTitle { title: "Combos" }
+            Row {
+              spacing: 40
+              ComboRows { width: 600; rows: root.combos.slice(0, root.comboSplit) }
+              ComboRows { rows: root.combos.slice(root.comboSplit) }
             }
           }
-        }
-
-        // Combos and menu keys, under the drawing.
-        Rectangle {
-          x: 0
-          y: 590
-          width: root.sheetW
-          height: 1
-          color: Util.alpha(root.ink, 0.15)
-        }
-        ComboList {
-          x: 0
-          y: 620
-          title: "Combos"
-          rows: root.combos
-        }
-        ComboList {
-          x: root.sheetW / 2 + 60
-          y: 620
-          title: "In the Omarchy menu"
-          rows: root.menu
+          Column {
+            width: (root.sheetW - 60) / 3
+            spacing: 18
+            SectionTitle { title: "Omarchy menu" }
+            ComboRows { rows: root.menu }
+          }
         }
       }
     }

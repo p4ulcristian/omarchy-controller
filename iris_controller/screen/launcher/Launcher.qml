@@ -218,11 +218,16 @@ Item {
           }
 
           Text {
-            anchors { left: parent.left; right: parent.right; top: icon.bottom; topMargin: 12; margins: 8 }
+            // The whole name, always: it wraps, and a long one shrinks to fit.
+            anchors { left: parent.left; right: parent.right; top: icon.bottom; bottom: parent.bottom
+                      topMargin: 8; margins: 6 }
             horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignTop
             textFormat: Text.PlainText
             text: modelData.name
-            elide: Text.ElideRight
+            wrapMode: Text.Wrap
+            fontSizeMode: Text.Fit
+            minimumPixelSize: 9
             font.family: Style.font.family
             font.bold: parent.selected
             font.pixelSize: 15

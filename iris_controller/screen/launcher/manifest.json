@@ -6,10 +6,10 @@
   "author": "p4ulcristian",
   "description": "App grid for iris-controller (tap PS): the apps of the Omarchy launcher as tiles. The controller moves the highlight and picks; this draws the grid and launches.",
   "kinds": [
-    "menu"
+    "panel"
   ],
   "keepLoaded": false,
   "entryPoints": {
-    "menu": "Launcher.qml"
+    "panel": "Launcher.qml"
   }
 }

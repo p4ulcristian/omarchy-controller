@@ -78,7 +78,7 @@ Optional. Copy [config.example.toml](config.example.toml) to
 `~/.config/omarchy-controller/config.toml`. It can:
 
 - make **R1** push-to-talk dictation with
-  [justsay](https://github.com/p4ulcristian/justsay) (or any daemon whose Unix
+  [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
 - make **R2** dictate and send the text to an Iris server,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.

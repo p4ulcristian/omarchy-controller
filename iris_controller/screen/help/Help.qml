@@ -9,16 +9,15 @@ import qs.Ui
 // DualSense cheat sheet. iris-controller summons and hides it each time the
 // mic button is pressed. Every word comes from the payload (the script's
 // live keymap); this file only knows where each part sits on the pad:
-//   { "parts":  { "cross": { "name": "✕", "actions": ["Enter"] }, ... },
-//     "combos": [ { "keys": ["L2", "R2"], "action": "Fullscreen" }, ... ],
-//     "menu":   [ { "keys": ["✕"], "action": "Open" }, ... ] }
+//   { "parts":      { "cross": { "name": "✕", "actions": ["Click"] }, ... },
+//     "categories": [ { "title": "Typing",
+//                       "rows": [ { "keys": ["R2", "□"], "action": "Space" }, ... ] }, ... ] }
 Item {
   id: root
 
   property bool opened: false
   property var parts: ({})
-  property var combos: []
-  property var menu: []
+  property var categories: []
 
   // The sheet is laid out this wide, as tall as its content, and the card
   // is scaled down until it fits the monitor.
@@ -92,8 +91,10 @@ Item {
   readonly property var leftLabels: layoutSide(anchorsLeft)
   readonly property var rightLabels: layoutSide(anchorsRight)
 
-  // Combos split over two columns so the lists stay short.
-  readonly property int comboSplit: Math.ceil(combos.length / 2)
+  // Category cards under the drawing, this many per row.
+  readonly property int catColumns: 4
+  readonly property int catGap: 40
+  readonly property real catW: (sheetW - (catColumns - 1) * catGap) / catColumns
 
   readonly property var targetScreen: {
     var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
@@ -107,8 +108,7 @@ Item {
     try {
       var p = JSON.parse(payloadJson || "{}")
       root.parts = p.parts || {}
-      root.combos = p.combos || []
-      root.menu = p.menu || []
+      root.categories = p.categories || []
     } catch (e) {}
     root.opened = true
   }
@@ -227,31 +227,26 @@ Item {
     }
   }
 
-  component ComboRows: Column {
+  // One category's rows: key chips, then what they do. The text shrinks
+  // rather than spill past the card.
+  component CategoryRows: Column {
     property var rows: []
     spacing: 10
 
     Repeater {
       model: parent.rows
       Row {
+        id: catRow
         required property var modelData
         spacing: 10
 
-        Repeater {
-          model: modelData.keys
-          Row {
-            required property string modelData
-            required property int index
-            spacing: 10
-            Text {
-              visible: index > 0
-              text: "+"
-              anchors.verticalCenter: parent.verticalCenter
-              font.family: Style.font.family
-              font.pixelSize: 18
-              color: root.faint
-            }
-            Key { label: modelData }
+        Row {
+          id: chips
+          spacing: 6
+          anchors.verticalCenter: parent.verticalCenter
+          Repeater {
+            model: catRow.modelData.keys
+            Key { required property string modelData; label: modelData }
           }
         }
 
@@ -264,11 +259,14 @@ Item {
         }
 
         Text {
-          textFormat: Text.PlainText
-          text: modelData.action
+          width: root.catW - chips.width - 40
           anchors.verticalCenter: parent.verticalCenter
+          textFormat: Text.PlainText
+          text: catRow.modelData.action
           font.family: Style.font.family
           font.pixelSize: 18
+          fontSizeMode: Text.HorizontalFit
+          minimumPixelSize: 12
           color: root.ink
         }
       }
@@ -403,7 +401,7 @@ Item {
           }
           Text {
             textFormat: Text.PlainText
-            text: "LINK ACTIVE · MIC TO CLOSE"
+            text: "LINK ACTIVE · ANY BUTTON TO CLOSE"
             font.family: Style.font.family
             font.pixelSize: 15
             font.letterSpacing: 2
@@ -509,28 +507,23 @@ Item {
           Callout { required property var modelData; entry: modelData; leftSide: false }
         }
 
-        // Combos and menu keys, under the drawing. The sheet ends where they do.
-        Row {
+        // The categories, under the drawing. The sheet ends where they do.
+        Grid {
           id: lists
           y: root.listsTop
-          width: root.sheetW
-          spacing: 60
+          columns: root.catColumns
+          columnSpacing: root.catGap
+          rowSpacing: 34
 
-          Column {
-            width: (root.sheetW - 60) * 2 / 3
-            spacing: 18
-            SectionTitle { title: "Combos" }
-            Row {
-              spacing: 40
-              ComboRows { width: 600; rows: root.combos.slice(0, root.comboSplit) }
-              ComboRows { rows: root.combos.slice(root.comboSplit) }
+          Repeater {
+            model: root.categories
+            Column {
+              required property var modelData
+              width: root.catW
+              spacing: 16
+              SectionTitle { title: modelData.title }
+              CategoryRows { rows: modelData.rows }
             }
-          }
-          Column {
-            width: (root.sheetW - 60) / 3
-            spacing: 18
-            SectionTitle { title: "Omarchy menu" }
-            ComboRows { rows: root.menu }
           }
         }
       }

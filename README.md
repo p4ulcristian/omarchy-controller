@@ -37,7 +37,7 @@ button):
 | R2 + □ | Space (hold to repeat) |
 | R2 + ○ | On-screen keyboard: D-pad moves, ✕ types (hold to repeat), □ space, △ backspace, L1 held shift, ○ closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
-| Mic | Show / hide the cheat sheet |
+| Mic | Show the cheat sheet (any button closes it) |
 
 ## Requirements
 
@@ -60,7 +60,7 @@ git clone https://github.com/p4ulcristian/omarchy-controller ~/.local/share/omar
 ```
 
 The installer puts a launcher at `~/.local/bin/iris-controller`, links the
-cheat sheet, the flash and the on-screen keyboard into
+cheat sheet, the flash, the guide and the on-screen keyboard into
 `~/.config/omarchy/plugins/`, enables them in
 `~/.config/omarchy/shell.json`, and starts a systemd user service. Run it
 again after pulling updates.
@@ -96,6 +96,8 @@ Optional. Copy [setup/config.example.toml](setup/config.example.toml) to
 - turn off the flash: what each press did appears in the middle of the
   screen (the buttons pop in, then what they did: "L2 + □ ▸ Copy",
   "□ ▸ Enter"). Combos and plain presses have separate switches.
+- turn off the guide (hold L2 or R2 and what can follow shows at that side
+  of the screen), or change how long you hold before it shows.
 - add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button, R2 + a D-pad direction,
   or a double tap on L2/R2, that run a command or send keys. They appear in the
   cheat sheet too.
@@ -126,6 +128,7 @@ iris_controller/
 ├── output/         virtual mouse + keyboard, Hyprland commands
 └── screen/         what you see, each an Omarchy shell plugin:
     ├── flash/      what a press just did, mid-screen
+    ├── guide/      what can follow a held L2 / R2, at its side
     ├── help/       the cheat sheet (mic button)
     └── keyboard/   the on-screen keyboard
 setup/              install.sh, the systemd service, config.example.toml
@@ -137,10 +140,10 @@ docs/               KEYMAP.md
 ```sh
 systemctl --user disable --now iris-controller
 rm ~/.local/bin/iris-controller ~/.config/systemd/user/iris-controller.service
-rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-{help,flash,keyboard}
+rm ~/.config/omarchy/plugins/p4ulcristian.iris-controller-{help,flash,guide,keyboard}
 ```
 
-Then remove those three from the `plugins` list in
+Then remove those four from the `plugins` list in
 `~/.config/omarchy/shell.json`.
 
 ## License

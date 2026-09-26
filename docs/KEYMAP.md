@@ -29,7 +29,7 @@ Press the mic button to toggle it as an overlay.
 | D-pad | Arrow keys (hold to repeat) |
 | Touchpad | Tap: arrow key toward that side |
 | Touchpad | Click & hold: arrow key, repeating |
-| Mic | Show / hide this cheat sheet |
+| Mic | Show this cheat sheet (any button closes it) |
 
 ## Combos
 

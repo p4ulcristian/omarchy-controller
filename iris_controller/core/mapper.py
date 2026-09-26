@@ -24,6 +24,8 @@ from ..modes.window import WindowMode
 from ..output import hyprland
 from ..output.virtual_input import VirtualInput
 from ..screen.flash.flash import Flash
+from ..screen.guide import guide
+from ..screen.guide.guide import Guide
 from ..screen.help.help import Help
 from ..screen.keyboard.keyboard import OnScreenKeyboard
 from ..screen.shell import Shell
@@ -40,6 +42,7 @@ class Mapper:
         self.out = out
         self.shell = Shell()
         self.flash = Flash(self.shell)
+        self.guide = Guide(self.shell)
         self.help = Help()
         self.keyboard = OnScreenKeyboard(self)
         self.touchpad = Touchpad(self)
@@ -56,12 +59,14 @@ class Mapper:
         self.axes: dict[int, float] = {}
         self.ranges: dict[int, tuple[int, int]] = {}
         self.trig = {e.ABS_Z: False, e.ABS_RZ: False}
+        self.trig_since = {e.ABS_Z: 0.0, e.ABS_RZ: 0.0}  # when each trigger went down, for the guide
         self.trig_pending: dict[int, float] = {}  # trigger -> press time, action not sent yet
         self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
         self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
         self.hat = {"x": 0, "y": 0}
         self.l1_held = False                  # L1 held: layer for user L1 combos
         self.enter_first: float | None = None   # first □ press, waiting for a second one
+        self.help_closer: int | None = None   # the button that closed the cheat sheet: its release does nothing
         self.grabbed = False
         self.mouse_focus_user = hyprland.mouse_focus_option()   # restored whenever we let go
 
@@ -119,6 +124,7 @@ class Mapper:
         if self.help.open:
             self.help.show(False)
         self.talk.stop()
+        self.guide.update(None)
         self.out.release_all()
 
     # --- input ------------------------------------------------------------
@@ -151,6 +157,15 @@ class Mapper:
         if self.paused:
             return
         out, flash = self.out, self.flash
+
+        # The cheat sheet closes on any button, and that press does nothing else.
+        if down and self.help.open:
+            self.help.show(False)
+            self.help_closer = code
+            return
+        if not down and code == self.help_closer:
+            self.help_closer = None
+            return
 
         if down and code == e.BTN_EAST and self.r2_held():
             self.keyboard.toggle(not self.keyboard.open)   # R2 + ○: on-screen keyboard
@@ -263,6 +278,10 @@ class Mapper:
         if now == was:
             return
         self.trig[code] = now
+        if now and self.help.open:
+            self.help.show(False)                # a trigger closes the cheat sheet too
+        if now:
+            self.trig_since[code] = time.monotonic()
         if now and code in DOUBLE_TRIGGERS and \
                 time.monotonic() - self.trig_tapped.pop(code, -1.0) < DOUBLE_TAP_WINDOW:
             self.trig_consumed.add(code)
@@ -295,6 +314,17 @@ class Mapper:
             if now - since >= (DOUBLE_TAP_WINDOW if code in DOUBLE_TRIGGERS else CHORD_WINDOW):
                 del self.trig_pending[code]
 
+    def check_guide(self) -> None:
+        # One trigger held on its own for guide.DELAY: show what can follow
+        # it at its side. R2 counts only as window mode (not a fullscreen chord).
+        l2, r2 = self.trig[e.ABS_Z], self.trig[e.ABS_RZ]
+        held = e.ABS_Z if l2 and not r2 else e.ABS_RZ if r2 and not l2 and self.r2_held() else None
+        side = None
+        if held is not None and not self.keyboard.open and not self.help.open \
+                and time.monotonic() - self.trig_since[held] >= guide.DELAY:
+            side = "left" if held == e.ABS_Z else "right"
+        self.guide.update(side)
+
     def r2_held(self) -> bool:
         # R2 down as window mode: not still a possible fullscreen chord / double
         # tap, and not already used up by one.
@@ -305,6 +335,9 @@ class Mapper:
         prev = self.hat[axis]
         self.hat[axis] = value
         if self.paused:
+            return
+        if value and self.help.open:
+            self.help.show(False)                # any D-pad press closes the cheat sheet
             return
         if self.keyboard.open:
             self.keyboard.dpad(axis, value, prev)
@@ -337,5 +370,6 @@ class Mapper:
             return
         self.check_triggers()
         self.check_enter()
+        self.check_guide()
         self.keyboard.tick()
         self.sticks.update(dt)

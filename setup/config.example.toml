@@ -32,6 +32,12 @@
 # combos = false
 # buttons = false
 
+# Hold L2 or R2 and what can follow it shows at that side of the screen
+# until you let go. On by default.
+# [guide]
+# enabled = false
+# delay = 0.3        # seconds of holding before it shows (default 0: at once)
+
 # Your own buttons. Each [[bind]] adds one; they show up in the cheat sheet.
 #   input: "L1 + <button>", "PS + <button>", "R2 + <D-pad ↑ → ↓ ←>",
 #          "R2 double" or "L2 double" (an R2 double tap delays every R2 hold by 0.25 s)

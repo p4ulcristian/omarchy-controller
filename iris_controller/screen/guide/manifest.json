@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "p4ulcristian.iris-controller-guide",
+  "name": "Controller guide",
+  "version": "1.0.0",
+  "author": "p4ulcristian",
+  "description": "While L2 or R2 is held, lists what can be pressed next at that side of the screen. Summoned by iris-controller with { side, trigger, rows }.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Guide.qml"
+  }
+}

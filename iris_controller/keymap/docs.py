@@ -54,7 +54,7 @@ def keymap() -> dict:
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
     add("touchpad", "Tap: arrow key toward that side")
     add("touchpad", "Click & hold: arrow key, repeating")
-    add("mic", "Show / hide this cheat sheet")
+    add("mic", "Show this cheat sheet (any button closes it)")
 
     combos = [{"keys": [name(ENTER_BTN), name(ENTER_BTN)], "action": ENTER_DOUBLE.label},
               *({"keys": [name(c), name(c)], "action": b.label} for c, b in DOUBLE_TRIGGERS.items()),
@@ -109,3 +109,75 @@ def keymap_markdown() -> str:
             "- Auto: pause when the focused window is fullscreen and belongs to Steam "
             "(`steam_app_*` class) or gamescope.", ""]
     return "\n".join(out)
+
+
+def cheatsheet() -> dict:
+    """The mic-button overlay: one short label per part of the drawing, and
+    every action once, grouped by what you want to do.
+    parts: {id: {name, actions: [label]}}; categories: [{title, rows: [{keys, action}]}]."""
+    parts = keymap()["parts"]
+    short = {"cross": "Click", "circle": "Escape", "square": "Enter", "triangle": "Backspace",
+             "lstick": "Pointer", "rstick": "Scroll", "options": "Omarchy menu", "ps": "Game mode",
+             "l2": "Shortcuts", "r2": "Window mode", "dpad": "Arrow keys", "touchpad": "Arrow keys",
+             "mic": "This sheet"}
+    if DICTATE_SOCK or IRIS_URL:
+        short["r1"] = "Voice"
+    if L1_COMBOS:
+        short["l1"] = "Your combos"
+    for pid, part in parts.items():
+        part["actions"] = [short[pid]] if pid in short else []
+
+    def name(code):
+        return PARTS[code][1]
+
+    def row(keys, action):
+        return {"keys": keys, "action": LABELS.get(action, action).split(" (")[0]}
+
+    L2, R2 = name(e.ABS_Z), name(e.ABS_RZ)
+    sq, ci, tr, cr = name(e.BTN_WEST), name(e.BTN_EAST), name(e.BTN_NORTH), name(e.BTN_SOUTH)
+    voice = []
+    if DICTATE_SOCK:
+        voice.append(row(["R1 hold"], "Dictate"))
+    if IRIS_URL:
+        voice.append(row(["R1 tap, hold"], "Talk to Iris"))
+    categories = [
+        {"title": "Pointer", "rows": [
+            row(["L-stick"], "Move pointer"),
+            row([cr], "Click (hold = drag)"),
+            row([L2, cr], RIGHT_CLICK.label),
+            row(["R-stick"], "Scroll")]},
+        {"title": "Typing", "rows": [
+            row([sq], "Enter"), row([ci], "Escape"), row([tr], "Backspace"),
+            row([sq, sq], ENTER_DOUBLE.label),
+            row([R2, sq], "Space"),
+            row([R2, ci], "On-screen keyboard")]},
+        {"title": "Edit & browse", "rows": [
+            row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
+            row([L2, ci], L2_COMBOS[e.BTN_EAST].label),
+            row(["D-pad"], "Arrow keys"),
+            row(["Touchpad"], "Arrow key toward that side"),
+            row([L2, "D-pad ←/→"], f"{NAV_BACK.label} / {NAV_FORWARD.label.lower()}"),
+            row([R2, tr], REFRESH.label)]},
+        {"title": "Windows", "rows": [
+            row([R2, "L-stick"], "Move"),
+            row([R2, "R-stick"], "Resize"),
+            row([R2, "L-stick", "R-stick ←/→"], "To workspace"),
+            row([L2, tr], L2_COMBOS[e.BTN_NORTH].label),
+            row([L2, R2], FULLSCREEN.label)]},
+        {"title": "Desktop", "rows": [
+            row([L2, "R-stick ←/→"], "Workspaces"),
+            row([L2, "R-stick ↑/↓"], "Text size"),
+            row([L2, "D-pad ↑/↓"], "Volume"),
+            row([name(e.BTN_START)], BASE_TAP[e.BTN_START].label)]},
+        {"title": "Voice & system", "rows": voice + [
+            row([name(e.BTN_MODE) + " hold 1 s"], "Game mode on/off"),
+            row(["Mic"], "This sheet")]},
+    ]
+    own = ([row([R2, "D-pad " + DPAD_ARROWS[d]], b.label) for d, b in R2_DPAD.items()]
+           + [row([name(c), name(c)], b.label) for c, b in DOUBLE_TRIGGERS.items()]
+           + [row([name(e.BTN_TL), name(c)], b.label) for c, b in L1_COMBOS.items()]
+           + [row([name(e.BTN_MODE), name(c)], b.label) for c, b in PS_COMBOS.items()])
+    if own:
+        categories.append({"title": "Your shortcuts", "rows": own})
+    categories.append({"title": "In the Omarchy menu", "rows": keymap()["menu"]})
+    return {"parts": parts, "categories": categories}

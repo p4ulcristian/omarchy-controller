@@ -214,7 +214,7 @@ Item {
           color: root.accent
         }
 
-        // What it did: slides in after the last key, letters spreading out.
+        // What it did: fades in as the last key lands, letters spreading out.
         Text {
           id: actionText
           anchors.verticalCenter: parent.verticalCenter
@@ -233,11 +233,11 @@ Item {
             id: slide
             PropertyAction { targets: [actionText, arrow]; property: "opacity"; value: 0 }
             PropertyAction { target: actionText; property: "font.letterSpacing"; value: 0 }
-            PauseAnimation { duration: root.keys.length * root.stagger + 120 }
-            NumberAnimation { target: arrow; property: "opacity"; to: 1; duration: 120 }
+            PauseAnimation { duration: Math.max(0, root.keys.length - 1) * root.stagger }
             ParallelAnimation {
-              NumberAnimation { target: actionText; property: "opacity"; to: 1; duration: 220 }
-              NumberAnimation { target: actionText; property: "font.letterSpacing"; to: 3; duration: 360; easing.type: Easing.OutCubic }
+              NumberAnimation { target: arrow; property: "opacity"; to: 1; duration: 80 }
+              NumberAnimation { target: actionText; property: "opacity"; to: 1; duration: 80 }
+              NumberAnimation { target: actionText; property: "font.letterSpacing"; to: 3; duration: 240; easing.type: Easing.OutCubic }
             }
           }
         }

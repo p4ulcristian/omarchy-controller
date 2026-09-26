@@ -22,7 +22,7 @@ Press the mic button to toggle it as an overlay.
 | L2 | Hold + D-pad ←/→: back / forward |
 | R2 | Hold + left stick: move window |
 | R2 | Hold + right stick: resize window |
-| R2 | Hold + ○: on-screen keyboard |
+| R2 | Twice: on-screen keyboard |
 | R2 | Hold + □: space |
 | R2 | Hold + △: refresh |
 | R2 | Dragging + right stick ←/→: take window to prev / next workspace |
@@ -36,6 +36,7 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
+| R2 + R2 | On-screen keyboard |
 | L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
 | Hold L2 + R-stick ← | Previous workspace |
@@ -49,7 +50,6 @@ Press the mic button to toggle it as an overlay.
 | Hold R2 + Left stick | Move window |
 | Hold R2 + R-stick | Resize window (→/↓ bigger) |
 | Hold R2 + Left stick + R-stick ←/→ | Take window to prev / next workspace |
-| Hold R2 + ○ | On-screen keyboard |
 | Hold R2 + □ | Space |
 | Hold R2 + △ | Refresh |
 | Hold L2 + △ | Close window |

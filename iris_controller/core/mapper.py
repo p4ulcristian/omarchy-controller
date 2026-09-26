@@ -14,7 +14,7 @@ from evdev import ecodes as e
 from ..device import finder
 from ..device.mic import Mic
 from ..device.touchpad import Touchpad
-from ..keymap.bindings import (BASE_HOLD, BASE_TAP, DOUBLE_TAP_WINDOW, DOUBLE_TRIGGERS, DPAD_ARROWS,
+from ..keymap.bindings import (BASE_HOLD, BASE_TAP, DOUBLE_TAP_WINDOW, DOUBLE_TRIGGERS, KEYBOARD, DPAD_ARROWS,
                                ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS, L2_COMBOS,
                                NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ARROWS,
                                VOLUME_DOWN, VOLUME_UP)
@@ -167,10 +167,6 @@ class Mapper:
             self.help_closer = None
             return
 
-        if down and code == e.BTN_EAST and self.r2_held():
-            self.keyboard.toggle(not self.keyboard.open)   # R2 + ○: on-screen keyboard
-            flash.show("R2 + ○", "Keyboard " + ("on" if self.keyboard.open else "off"))
-            return
         if code == e.BTN_WEST and not down:
             out.unhold("r2_space")               # let go of an R2 + □ space, if it was one
         if down and code == e.BTN_WEST and self.r2_held():
@@ -285,8 +281,14 @@ class Mapper:
         if now and code in DOUBLE_TRIGGERS and \
                 time.monotonic() - self.trig_tapped.pop(code, -1.0) < DOUBLE_TAP_WINDOW:
             self.trig_consumed.add(code)
-            self.out.fire(DOUBLE_TRIGGERS[code])
-            self.flash.show(f"{PARTS[code][1]} + {PARTS[code][1]}", DOUBLE_TRIGGERS[code].label)
+            bind = DOUBLE_TRIGGERS[code]
+            label = bind.label
+            if bind is KEYBOARD:
+                self.keyboard.toggle(not self.keyboard.open)
+                label = "Keyboard " + ("on" if self.keyboard.open else "off")
+            else:
+                self.out.fire(bind)
+            self.flash.show(f"{PARTS[code][1]} + {PARTS[code][1]}", label)
             return
         if not now and code in self.trig_consumed:
             self.trig_consumed.discard(code)

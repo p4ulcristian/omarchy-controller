@@ -7,7 +7,7 @@ from evdev import ecodes as e
 
 from ..core.config import LABELS
 from ..modes.talk import DICTATE_SOCK, IRIS_URL
-from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
+from .bindings import (DOUBLE_TRIGGERS, KEYBOARD, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ZOOM_IN,
                        ZOOM_OUT, BASE_HOLD, BASE_TAP, DPAD_ARROWS)
 
@@ -48,7 +48,7 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold + D-pad ←/→: back / forward")
     add(e.ABS_RZ, "Hold + left stick: move window")
     add(e.ABS_RZ, "Hold + right stick: resize window")
-    add(e.ABS_RZ, "Hold + ○: on-screen keyboard")
+    add(e.ABS_RZ, "Twice: on-screen keyboard")
     add(e.ABS_RZ, "Hold + □: space")
     add(e.ABS_RZ, "Hold + △: refresh")
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
@@ -72,7 +72,6 @@ def keymap() -> dict:
               {"keys": ["Hold " + name(e.ABS_RZ), "R-stick"], "action": "Resize window (→/↓ bigger)"},
               {"keys": ["Hold " + name(e.ABS_RZ), "Left stick", "R-stick ←/→"],
                "action": "Take window to prev / next workspace"}]
-    combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(e.BTN_EAST)], "action": "On-screen keyboard"})
     combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(ENTER_BTN)], "action": "Space"})
     combos.append({"keys": ["Hold " + name(e.ABS_RZ), name(e.BTN_NORTH)], "action": REFRESH.label})
     combos += [{"keys": ["Hold " + name(e.ABS_RZ), "D-pad " + DPAD_ARROWS[d]], "action": b.label}
@@ -150,7 +149,7 @@ def cheatsheet() -> dict:
             row([sq], "Enter"), row([ci], "Escape"), row([tr], "Backspace"),
             row([sq, sq], ENTER_DOUBLE.label),
             row([R2, sq], "Space"),
-            row([R2, ci], "On-screen keyboard")]},
+            row([R2, R2], "On-screen keyboard")]},
         {"title": "Edit & browse", "rows": [
             row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
             row([L2, ci], L2_COMBOS[e.BTN_EAST].label),
@@ -174,7 +173,7 @@ def cheatsheet() -> dict:
             row(["Mic"], "This sheet")]},
     ]
     own = ([row([R2, "D-pad " + DPAD_ARROWS[d]], b.label) for d, b in R2_DPAD.items()]
-           + [row([name(c), name(c)], b.label) for c, b in DOUBLE_TRIGGERS.items()]
+           + [row([name(c), name(c)], b.label) for c, b in DOUBLE_TRIGGERS.items() if b is not KEYBOARD]
            + [row([name(e.BTN_TL), name(c)], b.label) for c, b in L1_COMBOS.items()]
            + [row([name(e.BTN_MODE), name(c)], b.label) for c, b in PS_COMBOS.items()])
     if own:

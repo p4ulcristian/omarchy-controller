@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
-// On-screen keyboard for iris-controller (R2 + ○). The controller owns the
+// On-screen keyboard for iris-controller (R2 twice). The controller owns the
 // layout, the highlight and the typing; this draws them and reports the
 // pointer over the keys back on keyboard.sock ("hover R C", "leave",
 // "down R C", "up"). It never takes keyboard focus, so keys land in the
@@ -24,9 +24,9 @@ Item {
   property int col: 0
   property var mods: []
 
-  readonly property int unit: 64      // one key width, before scaling
-  readonly property int gap: 8
-  readonly property int pad: 22
+  readonly property int unit: 44      // one key width, before scaling
+  readonly property int gap: 5
+  readonly property int pad: 14
   readonly property int rowUnits: 15
   readonly property int boardW: rowUnits * unit
   readonly property int boardH: rows.length * unit + (rows.length - 1) * gap
@@ -34,8 +34,6 @@ Item {
   readonly property color ink: Color.popups.text
   readonly property color hud: Color.accent
   readonly property bool shifted: mods.indexOf("shift") >= 0
-
-  readonly property var modOf: ({ "⇧": "shift", "Ctrl": "ctrl", "Alt": "alt" })
 
   readonly property var targetScreen: {
     var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
@@ -118,14 +116,14 @@ Item {
       anchors.bottom: parent.bottom
       anchors.bottomMargin: 24
 
-      readonly property int cut: 20   // chamfered corners, like the cheat sheet
+      readonly property int cut: 14   // chamfered corners, like the cheat sheet
 
       Shape {
         anchors.fill: parent
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
           strokeColor: Util.alpha(root.hud, 0.55); strokeWidth: 1.5
-          fillColor: Color.background
+          fillColor: Util.alpha(Color.background, 0.8)
           PathSvg {
             path: "M " + card.cut + " 0 L " + card.width + " 0 L " + card.width + " " + (card.height - card.cut)
                 + " L " + (card.width - card.cut) + " " + card.height + " L 0 " + card.height
@@ -164,16 +162,12 @@ Item {
                 required property var modelData
                 required property int index
                 readonly property bool selected: keyRow.rowIndex === root.row && index === root.col
-                readonly property string mod: root.modOf[modelData.label] || ""
-                readonly property bool armed: mod !== "" && root.mods.indexOf(mod) >= 0
                 width: modelData.w * keyRow.unitW
                 height: root.unit
                 radius: 3
-                color: selected ? Util.alpha(root.hud, 0.32)
-                     : armed ? Util.alpha(root.hud, 0.16)
-                     : Util.alpha(root.ink, 0.06)
+                color: selected ? Util.alpha(root.hud, 0.32) : Util.alpha(root.ink, 0.06)
                 border.width: selected ? 2 : 1
-                border.color: selected ? root.hud : Util.alpha(root.hud, armed ? 0.7 : 0.25)
+                border.color: selected ? root.hud : Util.alpha(root.hud, 0.25)
 
                 MouseArea {
                   anchors.fill: parent
@@ -190,8 +184,8 @@ Item {
                   text: root.shifted ? modelData.shift : modelData.label
                   font.family: Style.font.family
                   font.bold: parent.selected
-                  font.pixelSize: text.length > 1 ? 18 : 24
-                  color: parent.selected || parent.armed ? root.ink : Util.alpha(root.ink, 0.8)
+                  font.pixelSize: text.length > 1 ? 13 : 18
+                  color: parent.selected ? root.ink : Util.alpha(root.ink, 0.8)
                 }
               }
             }

@@ -6,7 +6,7 @@ from __future__ import annotations
 from evdev import ecodes as e
 
 from ..core.config import LABELS
-from ..modes.talk import DICTATE_SOCK
+from ..modes.talk import DICTATE_SOCK, IRIS_URL
 from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ZOOM_IN,
                        ZOOM_OUT, BASE_HOLD, BASE_TAP, DPAD_ARROWS)
@@ -35,6 +35,8 @@ def keymap() -> dict:
         add(code, b.label)
     if DICTATE_SOCK:
         add(e.BTN_TR, "Hold: dictate")
+    if IRIS_URL:
+        add(e.BTN_TR, "Tap, then hold: talk to Iris")
     add(e.BTN_TL, "Hold: on-screen keyboard")
     add(e.BTN_TL, "Twice: keep the keyboard open (L1 again closes it)")
     add("rstick", "On-screen keyboard: move between keys")
@@ -139,6 +141,8 @@ def cheatsheet() -> dict:
     voice = []
     if DICTATE_SOCK:
         voice.append(row(["R1 hold"], "Dictate"))
+    if IRIS_URL:
+        voice.append(row(["R1", "R1 hold"], "Talk to Iris"))
     categories = [
         {"title": "Pointer", "rows": [
             row(["L-stick"], "Move pointer"),

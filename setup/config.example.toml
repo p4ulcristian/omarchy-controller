@@ -7,6 +7,15 @@
 # [dictate]
 # socket = "/run/user/1000/iris-dictation/iris-dictation.sock"
 
+# R1 tapped, then held = dictate and send the transcript to an Iris server
+# instead of typing it. Needs the dictate socket above to also accept
+# "stop-return" (stop and reply with the text). The secret is read from a
+# KEY=value file so it stays out of this one.
+# [iris]
+# url = "http://127.0.0.1:4270/api/chat"
+# secret_file = "~/path/to/.env"
+# secret_key = "IRIS_INTERNAL_SECRET"
+
 # The on-screen keyboard (L1 held) has a top row of extras: pick one and ✕
 # types the whole text, or presses the shortcut. These replace the defaults;
 # [] hides the row.

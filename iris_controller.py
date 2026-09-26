@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 import tomllib
+import urllib.request
 from typing import NamedTuple
 
 import evdev
@@ -77,6 +78,10 @@ def load_config() -> dict:
 CONFIG = load_config()
 # R1: push-to-talk dictation. A Unix socket that takes "start" and "stop".
 DICTATE_SOCK = os.path.expanduser(CONFIG.get("dictate", {}).get("socket", "")) or None
+# R1 double tap then hold: dictate, and post the transcript to an Iris server
+# instead of typing it. Needs the socket to also take "stop-return".
+IRIS = CONFIG.get("iris", {})
+IRIS_URL = IRIS.get("url") if DICTATE_SOCK else None
 # Rename actions in the cheat sheet, e.g. "Close window" = "Quit".
 LABELS: dict[str, str] = CONFIG.get("labels", {})
 # A short popup naming each combo as it fires ("L2 + □ → Copy"), and each
@@ -300,6 +305,8 @@ def keymap() -> dict:
         add(code, b.label)
     if DICTATE_SOCK:
         add(e.BTN_TR, "Hold: dictate")
+    if IRIS_URL:
+        add(e.BTN_TR, "Tap, then hold: talk to Iris (release to send)")
     add(e.BTN_TL, "Hold: combo layer")
     add(e.BTN_MODE, "Hold 1 s: game mode on/off")
     add(e.ABS_Z, "Hold + ✕: right click")
@@ -428,6 +435,50 @@ def dictate(verb: str) -> None:
         log.warning("dictate %s failed: %s", verb, exc)
 
 
+def iris_secret() -> str:
+    """The shared secret, read from a KEY=value file so it never sits in the config."""
+    path = IRIS.get("secret_file")
+    if not path:
+        return ""
+    name = IRIS.get("secret_key", "IRIS_INTERNAL_SECRET")
+    try:
+        with open(os.path.expanduser(path)) as f:
+            for line in f:
+                key, _, value = line.strip().partition("=")
+                if key.strip() == name:
+                    return value.strip().strip("'\"")
+    except OSError as exc:
+        log.warning("iris secret: %s", exc)
+    return ""
+
+
+def talk_to_iris() -> None:
+    """Runs in a thread: stop dictation, get the transcript, post it to Iris."""
+    try:
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(65)
+        s.connect(DICTATE_SOCK)
+        s.sendall(b"stop-return")
+        s.shutdown(socket.SHUT_WR)
+        text = s.recv(65536).decode().strip()
+        s.close()
+    except Exception as exc:
+        log.warning("dictate stop-return failed: %s", exc)
+        return
+    if not text:
+        return
+    req = urllib.request.Request(
+        IRIS_URL, data=json.dumps({"message": text, "source": "desktop"}).encode(),
+        headers={"Content-Type": "application/json", "X-Iris-Secret": iris_secret()})
+    try:
+        urllib.request.urlopen(req, timeout=10).read()
+        notify(f"To Iris: {text}")
+    except Exception as exc:
+        log.warning("iris send failed: %s", exc)
+        subprocess.run(["wl-copy", text], check=False)
+        notify(f"Iris didn't answer; message is on the clipboard: {text}")
+
+
 _note: list = [None, "0"]    # the last notify-send, and the notification id it got
 
 
@@ -495,6 +546,8 @@ class Mapper:
         self.trig_pending: dict[int, float] = {}  # trigger -> press time, action not sent yet
         self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
         self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
+        self.r1_down = 0.0                      # when R1 went down
+        self.r1_tapped = -1.0                   # when a quick R1 tap ended: a press soon after talks to Iris
         self.hat = {"x": 0, "y": 0}
         self.zoom_mode = False                  # LB held: right stick zooms
         self.enter_first: float | None = None   # first □ press, waiting for a second one
@@ -623,8 +676,9 @@ class Mapper:
         self.mic_down = False
         if self.help_open:
             self.show_help(False)
-        if self.btn_owner.pop("dictate", None) is not None:
-            dictate("stop")
+        for owner in ("dictate", "iris"):
+            if self.btn_owner.pop(owner, None) is not None:
+                dictate("stop")
         for owner in list(self.btn_owner):
             self.unhold(owner)
         for k in list(self.held_out):
@@ -815,13 +869,24 @@ class Mapper:
             return
 
         if not down:
+            if code == e.BTN_TR and self.btn_owner.pop("iris", None) is not None:
+                threading.Thread(target=talk_to_iris, daemon=True).start()
             if code == e.BTN_TR and self.btn_owner.pop("dictate", None) is not None:
-                dictate("stop")
+                dictate("stop")   # a quick tap is shorter than dictation's minimum: ignored
+                if time.monotonic() - self.r1_down < DOUBLE_TAP_WINDOW:
+                    self.r1_tapped = time.monotonic()
             self.unhold(code)
             return
 
         if code == e.BTN_TR:
-            if DICTATE_SOCK:
+            now = time.monotonic()
+            self.r1_down = now
+            if IRIS_URL and now - self.r1_tapped < DOUBLE_TAP_WINDOW:
+                self.r1_tapped = -1.0
+                self.btn_owner["iris"] = []   # released in on_button: sent to Iris
+                dictate("start")
+                self.announce("R1 + R1", "Talk to Iris")
+            elif DICTATE_SOCK:
                 self.btn_owner["dictate"] = []
                 dictate("start")
                 self.announce("R1", "Dictate", plain=True)

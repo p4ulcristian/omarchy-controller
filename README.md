@@ -93,6 +93,8 @@ Optional. Copy [config.example.toml](config.example.toml) to
 - make **R1** push-to-talk dictation with
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
+- make **R1 tap, then hold** talk to an Iris server: dictate, and on release
+  the transcript is posted to Iris instead of typed,
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
 - turn off the popups: a combo flashes in the middle of the screen (the
   buttons pop in, then what they did: "L2 + □ ▸ Copy"), and a plain press

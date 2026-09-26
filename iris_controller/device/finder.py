@@ -12,9 +12,9 @@ from evdev import ecodes as e
 log = logging.getLogger("iris-controller")
 
 # The motion sensors are a separate device we leave alone; the touchpad is a
-# separate device we use for swipes.
+# separate device we use for taps and clicks.
 DUALSENSE_NAMES = ("DualSense Wireless Controller", "DualSense Edge Wireless Controller")
-TOUCHPAD_SUFFIX = " Touchpad"   # grabbed like the pad: swipe pad, not a pointer
+TOUCHPAD_SUFFIX = " Touchpad"   # grabbed like the pad: tap pad, not a pointer
 
 
 def find_controller() -> list[evdev.InputDevice]:

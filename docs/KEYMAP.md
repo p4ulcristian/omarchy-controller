@@ -27,7 +27,6 @@ Press the mic button to toggle it as an overlay.
 | R2 | Hold + △: refresh |
 | R2 | Dragging + right stick ←/→: take window to prev / next workspace |
 | D-pad | Arrow keys (hold to repeat) |
-| Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Tap: arrow key toward that side |
 | Touchpad | Click & hold: arrow key, repeating |
 | Mic | Show / hide this cheat sheet |

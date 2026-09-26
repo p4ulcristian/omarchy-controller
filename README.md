@@ -21,7 +21,7 @@ button):
 | Right stick | Scroll |
 | ✕ / ○ / □ / △ | Left click / Escape / Enter / Backspace |
 | D-pad | Arrow keys (hold to repeat) |
-| Touchpad | Tap: arrow key toward the side you touch (click and hold to repeat), swipe up/down: volume |
+| Touchpad | Tap: arrow key toward the side you touch (click and hold to repeat) |
 | Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
 | L2 + ✕ | Right click (hold = drag) |
 | L2 + right stick ←/→ | Previous / next workspace |

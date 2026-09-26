@@ -52,7 +52,6 @@ def keymap() -> dict:
     add(e.ABS_RZ, "Hold + □: space")
     add(e.ABS_RZ, "Hold + △: refresh")
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
-    add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
     add("touchpad", "Click & hold: arrow key, repeating")
     add("mic", "Show / hide this cheat sheet")

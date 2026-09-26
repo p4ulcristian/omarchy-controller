@@ -60,7 +60,7 @@ PS_COMBOS: dict[int, Bind] = {}
 # L1 held + another button: one-shot chord. Empty: user binds only
 # ("L1 + ○" in [[bind]]); until then L1 isn't a layer.
 L1_COMBOS: dict[int, Bind] = {}
-# Touchpad swipe up/down: the media keys, so Omarchy's volume binding and OSD apply.
+# L2 + D-pad ↑/↓: the media keys, so Omarchy's volume binding and OSD apply.
 VOLUME_UP, VOLUME_DOWN = [e.KEY_VOLUMEUP], [e.KEY_VOLUMEDOWN]
 ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KEY_DOWN}
 

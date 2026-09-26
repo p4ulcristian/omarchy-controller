@@ -17,7 +17,7 @@ button):
 
 | Input | Action |
 |---|---|
-| Left stick | Move pointer (click and hold right stick for precision) |
+| Left stick | Move pointer |
 | Right stick | Scroll |
 | ✕ / ○ / □ / △ | Left click / Escape / Enter / Backspace |
 | D-pad | Arrow keys (hold to repeat) |
@@ -34,6 +34,7 @@ button):
 | L2 + R2 | Fullscreen |
 | R2 held + left stick | Move the window |
 | R2 held + right stick | Resize the window (→/↓ bigger, ←/↑ smaller) |
+| R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show / hide the cheat sheet |
 

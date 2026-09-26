@@ -14,9 +14,7 @@ Press the mic button to toggle it as an overlay.
 | L1 | Hold: combo layer |
 | R1 | Hold: dictate |
 | Left stick | Move pointer |
-| Left stick | Press: middle click |
 | Right stick | Scroll |
-| Right stick | Click & hold: precise pointer |
 | Options | Omarchy menu |
 | Create | Close window |
 | PS | Hold 1 s: game mode on/off |
@@ -25,6 +23,7 @@ Press the mic button to toggle it as an overlay.
 | L2 | Hold + D-pad ↑/↓: volume up / down |
 | R2 | Hold + left stick: move window |
 | R2 | Hold + right stick: resize window |
+| R2 | Dragging + right stick ←/→: take window to prev / next workspace |
 | D-pad | Arrow keys (hold to repeat) |
 | Touchpad | Swipe ↑/↓: volume up / down |
 | Touchpad | Tap: arrow key toward that side |
@@ -45,6 +44,7 @@ Press the mic button to toggle it as an overlay.
 | Hold L2 + D-pad ↓ | Volume down |
 | Hold R2 + Left stick | Move window |
 | Hold R2 + R-stick | Resize window (→/↓ bigger) |
+| Hold R2 + Left stick + R-stick ←/→ | Take window to prev / next workspace |
 | Hold L2 + △ | Close window |
 | Hold L2 + □ | Copy |
 | Hold L2 + ○ | Paste |

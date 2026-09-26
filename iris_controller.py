@@ -32,7 +32,6 @@ TAP_TIME = 0.25                 # a touch lifted within this, without sliding, i
 TICK = 0.008                 # seconds between pointer updates (~120 Hz)
 DEADZONE = 0.15
 POINTER_MAX = 1500.0         # px/s at full stick
-PRECISION = 0.3
 SCROLL_MAX = 2400.0          # hi-res wheel units/s (120 = one notch)
 TRIGGER_ON, TRIGGER_OFF = 0.5, 0.3
 DOUBLE_TAP_WINDOW = 0.25    # second ✕ within this = Ctrl+Enter; a single ✕ waits this long
@@ -90,7 +89,6 @@ BASE_HOLD = {
     e.BTN_EAST: Bind([e.KEY_ESC], "Escape"),
     e.BTN_WEST: Bind([e.KEY_ENTER], "Enter"),                     # physical X / Square
     e.BTN_NORTH: Bind([e.KEY_BACKSPACE], "Backspace"),            # physical Y / Triangle
-    e.BTN_THUMBL: Bind([e.BTN_MIDDLE], "Middle click"),
 }
 # One-shot chords on press.
 BASE_TAP = {
@@ -103,6 +101,10 @@ ENTER_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # �
 # RT held is window mode: the left stick drags the window (Super + left
 # button, pressed once the stick moves), the right stick resizes it.
 WINDOW_DRAG = [SUPER, e.BTN_LEFT]
+# RT + right stick sideways once a drag has started: take the window along
+# to the previous/next workspace.
+MOVE_NEXT_WS = 'hl.dsp.window.move({ workspace = "r+1" })'
+MOVE_PREV_WS = 'hl.dsp.window.move({ workspace = "r-1" })'
 RIGHT_CLICK = Bind([e.BTN_RIGHT], "Right click")                # LT + ✕
 FULLSCREEN = Bind([SUPER, e.KEY_F], "Fullscreen")               # LT + RT together
 # LT held + another button: one-shot chord. Copy/paste are Omarchy's universal
@@ -224,10 +226,9 @@ def keymap() -> dict:
     add("lstick", "Move pointer")
     add("rstick", "Scroll")
     for code, b in BASE_HOLD.items():
-        add(code, "Press: " + b.label.lower() if code == e.BTN_THUMBL else b.label)
+        add(code, b.label)
     for code, b in BASE_TAP.items():
         add(code, b.label)
-    add(e.BTN_THUMBR, "Click & hold: precise pointer")
     if DICTATE_SOCK:
         add(e.BTN_TR, "Hold: dictate")
     add(e.BTN_TL, "Hold: combo layer")
@@ -238,6 +239,7 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold + D-pad ↑/↓: volume up / down")
     add(e.ABS_RZ, "Hold + left stick: move window")
     add(e.ABS_RZ, "Hold + right stick: resize window")
+    add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
     add("touchpad", "Swipe ↑/↓: volume up / down")
     add("touchpad", "Tap: arrow key toward that side")
     add("touchpad", "Click & hold: arrow key, repeating")
@@ -252,7 +254,9 @@ def keymap() -> dict:
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↑"], "action": "Volume up"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↓"], "action": "Volume down"},
               {"keys": ["Hold " + name(e.ABS_RZ), "Left stick"], "action": "Move window"},
-              {"keys": ["Hold " + name(e.ABS_RZ), "R-stick"], "action": "Resize window (→/↓ bigger)"}]
+              {"keys": ["Hold " + name(e.ABS_RZ), "R-stick"], "action": "Resize window (→/↓ bigger)"},
+              {"keys": ["Hold " + name(e.ABS_RZ), "Left stick", "R-stick ←/→"],
+               "action": "Take window to prev / next workspace"}]
     combos += [{"keys": ["Hold " + name(e.ABS_Z), name(c)], "action": b.label}
                for c, b in LT_COMBOS.items()]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
@@ -394,11 +398,11 @@ class Mapper:
         self.trig_tapped: dict[int, float] = {}   # trigger -> when a quick tap ended (double tap)
         self.trig_consumed: set[int] = set()      # second press of a double tap: its release does nothing
         self.hat = {"x": 0, "y": 0}
-        self.precision = False
         self.zoom_mode = False                  # LB held: right stick zooms
         self.enter_first: float | None = None   # first □ press, waiting for a second one
         self.zoom_next = 0.0                    # when the next zoom/arrow step may fire
         self.resize_acc = [0.0, 0.0]            # RT + right stick: px not yet sent
+        self.dragged = False                    # this RT hold has dragged: right stick = workspaces
         self.resize_next = 0.0                  # when the next resize may be sent
         self.menu_checked = (0.0, False)        # (time, omarchy menu open?)
         self.acc = [0.0, 0.0, 0.0, 0.0]         # dx, dy, wheel_v, wheel_h
@@ -651,9 +655,6 @@ class Mapper:
         if code == ENTER_BTN:
             self.on_enter(down)
             return
-        if code == e.BTN_THUMBR:
-            self.precision = down        # slow pointer only while held
-            return
         if code == e.BTN_TL:
             self.zoom_mode = down        # right stick zooms instead of scrolling
             self.zoom_next = 0.0
@@ -779,9 +780,17 @@ class Mapper:
         if not self.rt_held():
             self.unhold("drag")
             self.resize_acc = [0.0, 0.0]
+            self.dragged = False
             return False
         if (lx or ly) and "drag" not in self.btn_owner:
             self.hold("drag", WINDOW_DRAG)
+            self.dragged = True
+        if self.dragged:
+            # Once dragging, the right stick sideways takes the window to
+            # another workspace instead of resizing it.
+            self.step(rx, lambda: self.move_window(MOVE_PREV_WS),
+                      lambda: self.move_window(MOVE_NEXT_WS), WORKSPACE_REPEAT)
+            return True
         # Right/down grow the window, left/up shrink it. Batched so a held
         # stick is a few hyprctl calls a second, not one per tick.
         self.resize_acc[0] += rx * RESIZE_SPEED * dt
@@ -794,6 +803,13 @@ class Mapper:
             self.resize_next = now + RESIZE_EVERY
             hypr_dispatch(f"hl.dsp.window.resize({{ x = {dx}, y = {dy}, relative = true }})")
         return True
+
+    def move_window(self, dispatch: str) -> None:
+        # Let go of the Super-drag first: a window can't change workspace
+        # mid-drag. The left stick picks it up again on the new workspace.
+        self.unhold("drag")
+        subprocess.run(["hyprctl", "dispatch", dispatch],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
     def menu_open(self) -> bool:
         at, is_open = self.menu_checked
@@ -842,7 +858,7 @@ class Mapper:
         rx, ry = self.curve(self.axes.get(e.ABS_RX, 0.0), self.axes.get(e.ABS_RY, 0.0))
 
 
-        speed = POINTER_MAX * (PRECISION if self.precision else 1.0) * dt
+        speed = POINTER_MAX * dt
         self.acc[0] += lx * speed
         self.acc[1] += ly * speed
         if self.window_mode(lx, ly, rx, ry, dt):

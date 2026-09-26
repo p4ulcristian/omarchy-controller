@@ -93,7 +93,7 @@ Optional. Copy [config.example.toml](config.example.toml) to
   it did ("□ → Enter", "L2 + □ → Copy", "L2 + R-stick → Workspace 3"),
   replacing the last one so repeats don't stack. Combos and plain presses
   have separate switches.
-- add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button,
+- add your own buttons: `[[bind]]` entries for L1 + a button, PS + a button, R2 + a D-pad direction,
   or a double tap on L2/R2, that run a command or send keys. They appear in the
   cheat sheet too.
 

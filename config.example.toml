@@ -19,7 +19,8 @@
 # buttons = false
 
 # Your own buttons. Each [[bind]] adds one; they show up in the cheat sheet.
-#   input: "L1 + <button>", "PS + <button>", "R2 double" or "L2 double"
+#   input: "L1 + <button>", "PS + <button>", "R2 + <D-pad ↑ → ↓ ←>",
+#          "R2 double" or "L2 double"
 #          buttons: ✕ ○ □ △ (or x o square triangle), L1 R1 L2 R2 L3 R3,
 #          Options, Create, PS
 #   run:   a shell command, or keys = "SUPER + W" to send a key combo

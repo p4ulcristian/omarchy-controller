@@ -35,7 +35,6 @@ Press the mic button to toggle it as an overlay.
 | Input | Action |
 |---|---|
 | □ + □ | Ctrl + Enter (double tap) |
-| R2 + R2 | Open Iris |
 | L2 + R2 | Fullscreen |
 | Hold L2 + ✕ | Right click |
 | Hold L2 + R-stick ← | Previous workspace |

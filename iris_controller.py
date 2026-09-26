@@ -138,6 +138,11 @@ ARROWS = {"left": e.KEY_LEFT, "right": e.KEY_RIGHT, "up": e.KEY_UP, "down": e.KE
 
 # L2/R2 double tap: user binds only (see [[bind]] in config.example.toml).
 DOUBLE_TRIGGERS: dict[int, Bind] = {}
+# RT held + D-pad direction: user binds only ("R2 + ↑" in [[bind]]).
+RT_DPAD: dict[str, Bind] = {}
+DPAD_NAMES = {"↑": "up", "→": "right", "↓": "down", "←": "left",
+              "up": "up", "right": "right", "down": "down", "left": "left"}
+DPAD_ARROWS = {"up": "↑", "right": "→", "down": "↓", "left": "←"}
 
 # Names a [[bind]] input may use for a button.
 BUTTON_NAMES = {
@@ -165,7 +170,7 @@ def parse_keys(spec: str) -> list[int]:
 
 def load_binds() -> None:
     """Add the config's [[bind]] entries to the tables:
-         input = "L1 + ○" | "PS + ✕" | "R2 double" | "L2 double"
+         input = "L1 + ○" | "PS + ✕" | "R2 + ↑" (D-pad) | "R2 double" | "L2 double"
          run = "a shell command"  or  keys = "SUPER + W"
          label = "shown in the cheat sheet"
     A bad entry is logged and skipped; the rest still load."""
@@ -183,8 +188,11 @@ def load_binds() -> None:
                 DOUBLE_TRIGGERS[code] = action
             else:
                 layer, _, button = (x.strip() for x in spec.partition("+"))
-                table = {"l1": LB_COMBOS, "ps": GUIDE_COMBOS}[layer]
-                table[BUTTON_NAMES[button]] = action
+                if layer == "r2":
+                    RT_DPAD[DPAD_NAMES[button.removeprefix("d-pad").strip()]] = action
+                else:
+                    table = {"l1": LB_COMBOS, "ps": GUIDE_COMBOS}[layer]
+                    table[BUTTON_NAMES[button]] = action
         except (KeyError, ValueError) as exc:
             log.warning("config bind %r skipped: %s", entry, exc)
 
@@ -192,7 +200,7 @@ def load_binds() -> None:
 load_binds()
 
 OUT_KEYS = sorted(
-    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, LT_COMBOS, DOUBLE_TRIGGERS)
+    {k for m in (BASE_HOLD, BASE_TAP, GUIDE_COMBOS, LB_COMBOS, LT_COMBOS, DOUBLE_TRIGGERS, RT_DPAD)
      for b in m.values() for k in b.keys}
     | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, ZOOM_IN, ZOOM_OUT) for k in b.keys}
     | set(ARROWS.values())
@@ -261,6 +269,8 @@ def keymap() -> dict:
               {"keys": ["Hold " + name(e.ABS_RZ), "R-stick"], "action": "Resize window (→/↓ bigger)"},
               {"keys": ["Hold " + name(e.ABS_RZ), "Left stick", "R-stick ←/→"],
                "action": "Take window to prev / next workspace"}]
+    combos += [{"keys": ["Hold " + name(e.ABS_RZ), "D-pad " + DPAD_ARROWS[d]], "action": b.label}
+               for d, b in RT_DPAD.items()]
     combos += [{"keys": ["Hold " + name(e.ABS_Z), name(c)], "action": b.label}
                for c, b in LT_COMBOS.items()]
     combos += [{"keys": ["Hold " + name(e.BTN_MODE), name(c)], "action": b.label}
@@ -808,7 +818,10 @@ class Mapper:
         if value != prev:
             self.unhold(("hat", axis))
             arrow = names[0] if value < 0 else names[1]
-            if value and axis == "y" and self.trig[e.ABS_Z]:
+            if value and self.rt_held() and arrow in RT_DPAD:
+                self.fire(RT_DPAD[arrow])        # RT held: the D-pad runs user binds
+                self.announce("R2 + D-pad " + DPAD_ARROWS[arrow], RT_DPAD[arrow].label)
+            elif value and axis == "y" and self.trig[e.ABS_Z]:
                 # LT held: ↑/↓ = volume, held so Omarchy's binding repeats it.
                 self.hold(("hat", axis), VOLUME_UP if value < 0 else VOLUME_DOWN)
                 self.announce("L2 + D-pad", "Volume up" if value < 0 else "Volume down")

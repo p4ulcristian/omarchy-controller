@@ -38,7 +38,7 @@ button):
 | L1 | On-screen keyboard on / off (○ closes it too). Petal wheel: left stick picks a petal, △ ○ ✕ □ pick its letter; stick at rest: ✕ space, △ backspace, □ Enter. L2 / R2 switch layers (letters, numbers & symbols, keys), D-pad ↑ ← → sticky Ctrl / Alt / Super, ↓ Tab, R1 held shift, right stick moves the text cursor. Create switches to the QWERTY grid |
 | Tap PS | App launcher: the Omarchy launcher's apps as tiles; D-pad or left stick moves, ✕ opens, ○ or PS closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
-| Create (hold) | Compose: tell a local model what to write ("say I'll be late, keep it short", "kakapo dot com, spelled K A K A P O") and the box changes to it. A panel shows your last prompt and the draft; hold again to change it ("shorter"). ✕ done, △ undo, ○ put the box back. L2 + Create rewrites the box's whole text |
+| Create (hold) | Compose: tell Claude (Haiku) what to write ("say I'll be late, keep it short", "kakapo dot com, spelled K A K A P O") and the box changes to it. A panel shows your last prompt and the draft; hold again to change it ("shorter"). ✕ done, △ undo, ○ put the box back; D-pad ←/→ and □ reuse a text you finished before. L2 + Create rewrites the box's whole text |
 | Mic | Show the cheat sheet (any button closes it) |
 
 ## Requirements

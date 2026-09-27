@@ -17,17 +17,20 @@
 # secret_key = "IRIS_INTERNAL_SECRET"
 
 # Create held = compose: say what to write ("say I'll be late, keep it short",
-# "kakapo dot com, spelled K A K A P O") and a local model (Ollama) writes it
-# into the focused box. A panel shows your last prompt and the draft; hold
-# Create again to change it ("shorter"). ✕ done, △ undo, ○ put the box back.
-# L2 + Create starts from the box's whole text and rewrites it. Needs
-# the dictate socket above (with "stop-return") and the model pulled
-# (ollama pull gemma4:e4b). Nothing leaves the machine.
+# "kakapo dot com, spelled K A K A P O") and a model writes it into the
+# focused box. A panel shows your last prompt and the draft; hold Create again
+# to change it ("shorter"). ✕ done, △ undo, ○ put the box back. The texts you
+# finished show as Recent: D-pad ←/→ picks one, □ adds it. L2 + Create
+# starts from the box's whole text and rewrites it. Needs the dictate socket
+# above (with "stop-return"). The default is Claude Haiku through the Claude
+# Code CLI, logged in with your subscription (no API key; a few seconds a
+# turn); backend = "ollama" runs a local model instead.
 # [compose]
 # enabled = true
-# model = "gemma4:e4b"
-# url = "http://127.0.0.1:11434"
-# words = ["Salesforce", "kakapo"]   # names and brands it should recognise when misheard
+# backend = "claude"         # or "ollama"
+# model = "haiku"            # "gemma4:e4b" for ollama
+# claude = "~/.local/bin/claude"   # if the service can't find it on PATH
+# url = "http://127.0.0.1:11434"   # ollama only
 
 # The on-screen keyboard (L1 held) has a top row of extras: pick one and ✕
 # types the whole text, or presses the shortcut. These replace the defaults;

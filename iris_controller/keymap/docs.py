@@ -39,7 +39,7 @@ def keymap() -> dict:
     if IRIS_URL:
         add(e.BTN_TR, "Tap, then hold: talk to Iris")
     if compose.ENABLED:
-        add(e.BTN_SELECT, "Hold: tell a local model what to write; the box changes (✕ done, △ undo, ○ put back)")
+        add(e.BTN_SELECT, "Hold: tell Claude what to write; the box changes (✕ done, △ undo, ○ put back, D-pad + □ a recent text)")
         add(e.ABS_Z, "Hold + Create: rewrite the box's whole text by voice")
     add(e.BTN_TL, "On-screen keyboard on / off")
     add("rstick", "On-screen keyboard: move between keys")

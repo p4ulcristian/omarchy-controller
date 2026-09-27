@@ -12,7 +12,8 @@ import qs.Ui
 // loses nothing. Look-only: it never takes focus, so the box you're writing
 // into keeps it.
 //   summon / update(json): { "state": "listening" | "thinking" | "ready" | "error",
-//                            "prompt": "...", "draft": "...", "error": "...", "undo": true }
+//                            "prompt": "...", "draft": "...", "error": "...", "undo": true,
+//                            "recent": ["kakapo.com", ...], "pick": 0 }
 Item {
   id: root
 
@@ -25,6 +26,8 @@ Item {
   property string prompt: ""
   property string error: ""
   property bool canUndo: false
+  property var recent: []         // texts finished before, newest first
+  property int pick: 0            // the highlighted one (D-pad ←/→, □ uses it)
 
   readonly property color ink: Color.popups.text
   readonly property color accent: Color.accent
@@ -47,6 +50,8 @@ Item {
       root.prompt = p.prompt || ""
       root.error = p.error || ""
       root.canUndo = !!p.undo
+      root.recent = p.recent || []
+      root.pick = p.pick || 0
     } catch (e) {}
   }
 
@@ -195,6 +200,48 @@ Item {
           }
         }
 
+        // Texts finished before: D-pad ←/→ highlights one, □ puts it in the draft.
+        Flow {
+          visible: root.recent.length > 0
+          width: parent.width
+          spacing: 8
+          Text {
+            height: 30
+            verticalAlignment: Text.AlignVCenter
+            text: "RECENT"
+            font.family: Style.font.family
+            font.bold: true
+            font.pixelSize: 13
+            font.letterSpacing: 2
+            color: Util.alpha(root.ink, 0.5)
+          }
+          Repeater {
+            model: root.recent
+            Rectangle {
+              required property string modelData
+              required property int index
+              readonly property bool picked: index === root.pick
+              height: 30
+              width: Math.min(chipLabel.implicitWidth + 20, 260)
+              radius: 3
+              color: picked ? Util.alpha(root.symbolColor["□"], 0.18) : Util.alpha(root.ink, 0.05)
+              border.width: picked ? 2 : 1
+              border.color: picked ? root.symbolColor["□"] : Util.alpha(root.ink, 0.15)
+              Text {
+                id: chipLabel
+                anchors.centerIn: parent
+                width: Math.min(implicitWidth, 240)
+                elide: Text.ElideRight
+                textFormat: Text.PlainText
+                text: modelData.replace(/\s+/g, " ")
+                font.family: Style.font.family
+                font.pixelSize: 15
+                color: root.ink
+              }
+            }
+          }
+        }
+
         Rectangle { width: parent.width; height: 1; color: Util.alpha(root.ink, 0.12) }
 
         // What the buttons do right now.
@@ -205,6 +252,7 @@ Item {
               { key: "Create", label: "Talk", on: root.phase !== "thinking" },
               { key: "✕", label: "Done", on: root.phase !== "listening" && root.phase !== "thinking" },
               { key: "△", label: "Undo", on: root.canUndo },
+              { key: "□", label: "Use recent", on: root.recent.length > 0 && root.phase !== "listening" && root.phase !== "thinking" },
               { key: "○", label: "Put back", on: true }
             ]
             Row {

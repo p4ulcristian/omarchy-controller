@@ -380,6 +380,10 @@ class Mapper:
         if self.launcher.open:
             self.launcher.dpad(axis, value, prev)
             return
+        if self.compose.open:
+            self.out.unhold(("hat", axis))          # an arrow held from before the panel
+            self.compose.dpad(axis, value, prev)   # ←/→ picks a recent text
+            return
         if self.keyboard.open:
             self.keyboard.dpad(axis, value, prev)
             return

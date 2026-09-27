@@ -1,6 +1,8 @@
-"""On-screen keyboard (L1 held, or L1 twice to keep it). The controller keeps the layout and the
+"""On-screen keyboard (L1 opens it, L1 again closes it). The controller keeps the layout and the
 highlight and types the keys; Keyboard.qml next to this file only draws them,
-and reports the real pointer on its keys back over a socket."""
+and reports the real pointer on its keys back over a socket. Two styles,
+switched with the Create button while it shows: the QWERTY grid here, and
+the petal wheel (wheel.py)."""
 
 from __future__ import annotations
 
@@ -14,8 +16,10 @@ import time
 from evdev import ecodes as e
 
 from ...core.config import CONFIG
-from ...keymap.bindings import DOUBLE_TAP_WINDOW, SHIFT
+from ...keymap.bindings import SHIFT
 from ...keymap.user_binds import parse_keys
+from . import wheel
+from .wheel import Wheel
 
 log = logging.getLogger("iris-controller")
 
@@ -43,7 +47,7 @@ ROWS = [
     _chars("zxcvbnm", "ZXCVBNM", [*"ZXCVBNM"]),
     [("", "", e.KEY_SPACE, 1)],
 ]
-KEYS = {k[2] for row in ROWS for k in row if k[2]}   # key codes it can send
+KEYS = {k[2] for row in ROWS for k in row if k[2]} | wheel.KEYS   # key codes it can send
 # Characters the keyboard can type, for snippets: char -> (key code, shifted).
 CHARS = {" ": (e.KEY_SPACE, False)}
 for _row in ROWS:
@@ -77,6 +81,9 @@ if EXTRAS:
 # Each row's keys share its 15 units evenly.
 ROWS = [[(b, sh, code, 15 / len(row)) for b, sh, code, _ in row] for row in ROWS]
 
+# [keyboard] style = "wheel" opens the petal wheel first, "grid" the QWERTY grid.
+STYLE = CONFIG.get("keyboard", {}).get("style", "grid")
+
 SLASH = next((r, c) for r, row in enumerate(ROWS) for c, k in enumerate(row) if k[0] == "/")
 
 
@@ -95,45 +102,35 @@ class OnScreenKeyboard:
         self.next = 0.0                         # when a held D-pad moves the highlight again
         self.aim = False                        # ✕ types the highlight (pointer on a key / D-pad used)
         self.x_typing = False                   # this ✕ press is typing, so its release is ours too
-        self.kept = False                       # L1 tapped twice: stays open without holding
-        self.l1_down = 0.0                      # when L1 went down
-        self.l1_tapped = -1.0                   # when a quick L1 tap ended: a press soon after keeps it
+        self.style = STYLE if STYLE in ("grid", "wheel") else "grid"
+        self.wheel = Wheel(self, CHARS)
+
+    @property
+    def wheeling(self) -> bool:
+        """The petal wheel shows: it takes the triggers, the D-pad and both sticks."""
+        return self.open and self.style == "wheel"
 
     def toggle(self, show: bool) -> None:
         self.open = show
         self.aim = show
         self.shift_held = False
-        if not show:
-            self.kept = False
         self.m.out.unhold("osk")
+        self.wheel.reset()
         if show:
             rows = [[{"label": k[0], "shift": k[1], "w": k[3]} for k in row] for row in ROWS]
-            self.send(["summon", PLUGIN, json.dumps({"rows": rows, **self.state()})])
+            self.send(["summon", PLUGIN, json.dumps({"rows": rows, **self.wheel.payload(), **self.state()})])
         else:
             self.send(["hide", PLUGIN])
 
     def l1(self, down: bool) -> None:
-        """L1 held shows the keyboard until release; tapped twice it stays
-        (another L1 press, or ○, closes it)."""
-        now = time.monotonic()
+        """L1 opens the keyboard and L1 again closes it (so does ○); no holding."""
         if down:
-            if self.kept:
-                self.toggle(False)
-                self.l1_tapped = -1.0
-                return
-            self.kept = now - self.l1_tapped < DOUBLE_TAP_WINDOW
-            self.l1_down = now
-            if not self.open:
-                self.toggle(True)
-            if self.kept:
-                self.m.flash.show("L1 + L1", "Keyboard stays")
-        elif not self.kept:
-            quick = now - self.l1_down < DOUBLE_TAP_WINDOW
-            self.l1_tapped = now if quick else -1.0
-            self.toggle(False)
+            self.toggle(not self.open)
 
     def state(self) -> dict:
-        return {"row": self.pos[0], "col": self.pos[1], "mods": ["shift"] if self.shift_held else []}
+        w = self.wheel.state()
+        return {"style": self.style, "row": self.pos[0], "col": self.pos[1], **w,
+                "mods": (["shift"] if self.shift_held else []) + w["mods"]}
 
     def update(self) -> None:
         self.send(["call", PLUGIN, "update", json.dumps(self.state())])
@@ -154,6 +151,9 @@ class OnScreenKeyboard:
         self.update()
 
     def dpad(self, axis: str, value: int, prev: int) -> None:
+        if self.wheeling:
+            self.wheel.dpad(axis, value, prev)
+            return
         # The D-pad moves the highlight; held, it keeps moving (see tick).
         if value and value != prev:
             self.move(axis, value)
@@ -167,6 +167,16 @@ class OnScreenKeyboard:
             self.shift_held = down               # R1 held = shift
             self.update()
             return True
+        if code == e.BTN_SELECT:
+            if down:                              # Create: the other style
+                self.style = "grid" if self.style == "wheel" else "wheel"
+                self.m.out.unhold("osk")
+                self.wheel.reset()
+                self.update()
+                self.m.flash.show("Create", "Petal wheel" if self.wheeling else "QWERTY grid")
+            return True
+        if self.wheeling:
+            return self.wheel.button(code, down)
         if code == e.BTN_EAST:
             if down:
                 self.toggle(False)                # ○ closes the keyboard
@@ -200,7 +210,7 @@ class OnScreenKeyboard:
         # A report from the keyboard overlay: the pointer over a key, off it,
         # or a real mouse button on a key.
         parts = line.split()
-        if not self.open or not parts:
+        if not self.open or self.wheeling or not parts:
             return
         if parts[0] in ("hover", "down") and len(parts) == 3:
             try:
@@ -229,7 +239,7 @@ class OnScreenKeyboard:
 
     def tick(self) -> None:
         # A held D-pad keeps moving the highlight.
-        if not self.open or time.monotonic() < self.next:
+        if not self.open or self.wheeling or time.monotonic() < self.next:
             return
         for axis in ("x", "y"):
             if self.m.hat[axis]:

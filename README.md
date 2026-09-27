@@ -25,7 +25,7 @@ button):
 | Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
 | L2 + ✕ | Right click (hold = drag) |
 | L2 + right stick ←/→ | Previous / next workspace |
-| L2 + right stick ↑/↓ | Bigger / smaller text |
+| L2 + right stick ↑/↓ | Zoom in / out (Ctrl + scroll) |
 | L2 + D-pad ↑/↓ | Volume up / down |
 | L2 + D-pad ←/→ | Back / forward (browsers, file managers) |
 | L2 + △ / □ / ○ | Close window / copy / paste |
@@ -35,7 +35,7 @@ button):
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
 | R2 + △ | Refresh (Ctrl + R) |
 | R2 + □ | Space (hold to repeat) |
-| L1 held | On-screen keyboard while held: right stick or D-pad moves, ✕ types (hold to repeat), □ Enter, △ backspace, R1 held shift; let go of L1 to hide it. L1 twice keeps it open; L1 again or ○ closes it |
+| L1 | On-screen keyboard on / off (○ closes it too). Petal wheel: left stick picks a petal, △ ○ ✕ □ pick its letter; stick at rest: ✕ space, △ backspace, □ Enter. L2 / R2 switch layers (letters, numbers & symbols, keys), D-pad ↑ ← → sticky Ctrl / Alt / Super, ↓ Tab, R1 held shift, right stick moves the text cursor. Create switches to the QWERTY grid |
 | Tap PS | App launcher: the Omarchy launcher's apps as tiles; D-pad or left stick moves, ✕ opens, ○ or PS closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Mic | Show the cheat sheet (any button closes it) |

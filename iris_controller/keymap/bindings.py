@@ -41,15 +41,18 @@ REFRESH = Bind([CTRL, e.KEY_R], "Refresh")                      # R2 + △
 # L2 + D-pad ←/→: back / forward, as in browsers and file managers.
 NAV_BACK = Bind([ALT, e.KEY_LEFT], "Back")
 NAV_FORWARD = Bind([ALT, e.KEY_RIGHT], "Forward")
+# L2 + left stick ↑/↓: text size in steps (terminals, browsers); L2 + right
+# stick click resets it and the zoom.
+FONT_BIGGER = Bind([CTRL, e.KEY_EQUAL], "Bigger text")
+FONT_SMALLER = Bind([CTRL, e.KEY_MINUS], "Smaller text")
 # L2 held + another button: one-shot chord. Copy/paste are Omarchy's universal
 # ones, so they work in terminals too.
 L2_COMBOS = {
     e.BTN_NORTH: Bind([SUPER, e.KEY_W], "Close window"),          # △
     e.BTN_WEST: Bind([SUPER, e.KEY_C], "Copy"),                   # □
+    e.BTN_THUMBR: Bind([CTRL, e.KEY_0], "Reset zoom (click the stick)"),            # right stick click
     e.BTN_EAST: Bind([SUPER, e.KEY_V], "Paste"),                  # ○
 }
-ZOOM_IN = Bind([CTRL, e.KEY_EQUAL], "Bigger text")              # L2 + right stick
-ZOOM_OUT = Bind([CTRL, e.KEY_MINUS], "Smaller text")
 # PS button held + another button: one-shot chord (cancels the tap and hold).
 # Empty: the PS button only toggles game mode.
 PS_COMBOS: dict[int, Bind] = {}
@@ -83,7 +86,8 @@ def output_keys() -> set[int]:
     return (
         {k for m in (BASE_HOLD, BASE_TAP, PS_COMBOS, L1_COMBOS, L2_COMBOS, DOUBLE_TRIGGERS, R2_DPAD)
          for b in m.values() for k in b.keys}
-        | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, REFRESH, NAV_BACK, NAV_FORWARD, ZOOM_IN, ZOOM_OUT)
+        | {k for b in (ENTER_DOUBLE, RIGHT_CLICK, FULLSCREEN, REFRESH, NAV_BACK, NAV_FORWARD,
+                       FONT_BIGGER, FONT_SMALLER)
            for k in b.keys}
         | set(ARROWS.values())
         | {e.KEY_VOLUMEUP, e.KEY_VOLUMEDOWN}

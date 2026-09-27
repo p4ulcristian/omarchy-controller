@@ -11,8 +11,7 @@ Press the mic button to toggle it as an overlay.
 | ○ | Escape |
 | □ | Enter |
 | △ | Backspace |
-| L1 | Hold: on-screen keyboard |
-| L1 | Twice: keep the keyboard open (L1 again closes it) |
+| L1 | On-screen keyboard on / off |
 | Left stick | Move pointer |
 | Right stick | Scroll |
 | Right stick | On-screen keyboard: move between keys |
@@ -21,7 +20,8 @@ Press the mic button to toggle it as an overlay.
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
 | L2 | Hold + right stick ←/→: previous / next workspace |
-| L2 | Hold + right stick ↑/↓: bigger / smaller text |
+| L2 | Hold + right stick ↑/↓: zoom in / out (Ctrl + scroll) |
+| L2 | Hold + left stick ↑/↓: bigger / smaller text |
 | L2 | Hold + D-pad ↑/↓: volume up / down |
 | L2 | Hold + D-pad ←/→: back / forward |
 | R2 | Hold + left stick: move window |
@@ -43,8 +43,10 @@ Press the mic button to toggle it as an overlay.
 | Hold L2 + ✕ | Right click |
 | Hold L2 + R-stick ← | Previous workspace |
 | Hold L2 + R-stick → | Next workspace |
-| Hold L2 + R-stick ↑ | Bigger text |
-| Hold L2 + R-stick ↓ | Smaller text |
+| Hold L2 + R-stick ↑ | Zoom in |
+| Hold L2 + R-stick ↓ | Zoom out |
+| Hold L2 + L-stick ↑ | Bigger text |
+| Hold L2 + L-stick ↓ | Smaller text |
 | Hold L2 + D-pad ↑ | Volume up |
 | Hold L2 + D-pad ↓ | Volume down |
 | Hold L2 + D-pad ← | Back |
@@ -56,6 +58,7 @@ Press the mic button to toggle it as an overlay.
 | Hold R2 + △ | Refresh |
 | Hold L2 + △ | Close window |
 | Hold L2 + □ | Copy |
+| Hold L2 + Right stick | Reset zoom (click the stick) |
 | Hold L2 + ○ | Paste |
 
 ## In the Omarchy menu

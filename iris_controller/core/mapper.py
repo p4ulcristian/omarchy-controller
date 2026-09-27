@@ -286,6 +286,15 @@ class Mapper:
         if now == was:
             return
         self.trig[code] = now
+        if self.keyboard.wheeling:
+            # The petal wheel: L2 / R2 step through its layers and do nothing
+            # else (consumed, so R2 isn't window mode while it's down).
+            if now:
+                self.trig_consumed.add(code)
+                self.keyboard.wheel.trigger(code)
+            else:
+                self.trig_consumed.discard(code)
+            return
         if now and self.help.open:
             self.help.show(False)                # a trigger closes the cheat sheet too
         if now:

@@ -1,6 +1,6 @@
 """The sticks, every tick: left moves the pointer, right scrolls. With
-L2 held the right stick switches workspaces (sideways) or changes the text
-size (up/down); in the Omarchy menu it moves through the list; with R2 held
+L2 held the right stick switches workspaces (sideways) or zooms (up/down,
+as Ctrl + scroll); in the Omarchy menu it moves through the list; with R2 held
 it belongs to window mode. While the app launcher shows, the left stick
 steps through its tiles; while the on-screen keyboard shows, the right
 stick steps through its keys."""
@@ -11,7 +11,7 @@ import time
 
 from evdev import ecodes as e
 
-from ..keymap.bindings import ZOOM_IN, ZOOM_OUT, Bind
+from ..keymap.bindings import CTRL, FONT_BIGGER, FONT_SMALLER
 from ..output import hyprland
 from ..screen.flash import flash
 from ..screen.keyboard.keyboard import DELAY as KEY_DELAY, REPEAT as KEY_REPEAT
@@ -23,6 +23,7 @@ ZOOM_THRESHOLD = 0.5         # right stick deflection that counts as a step
 ZOOM_REPEAT = 0.2            # seconds between zoom steps while the stick stays pushed
 WORKSPACE_DELAY = 0.3        # seconds from the first workspace step to the second while held
 WORKSPACE_REPEAT = 0.12      # seconds between workspace steps after that
+ZOOMING = "l2-zoom"          # who holds Ctrl while L2 + right stick zooms
 
 
 def curve(x: float, y: float) -> tuple[float, float]:
@@ -40,6 +41,8 @@ class Sticks:
         self.acc = [0.0, 0.0, 0.0, 0.0]         # dx, dy, wheel_v, wheel_h not yet sent
         self.next_step = 0.0                    # when the next zoom/arrow/workspace step may fire
         self.step_dir = 0                       # which way the stick is pushed for steps: (axis, ±1), 0 = not
+        self.font_dir = 0                       # L2 + left stick: -1 bigger, 1 smaller, 0 = not pushed
+        self.font_next = 0.0                    # when a held push steps the text size again
 
     def update(self, dt: float) -> None:
         m = self.m
@@ -53,20 +56,43 @@ class Sticks:
             self.step(v, lambda: m.launcher.move(axis, -1), lambda: m.launcher.move(axis, 1),
                       WORKSPACE_REPEAT, WORKSPACE_DELAY, axis)
             return
+        if m.keyboard.wheeling:
+            # The petal wheel: the left stick picks petals (the right thumb is
+            # on the face buttons), the right one moves the text cursor; the
+            # pointer stays put.
+            m.keyboard.wheel.aim(m.axes.get(e.ABS_X, 0.0), m.axes.get(e.ABS_Y, 0.0))
+            axis, v = ("x", rx) if abs(rx) > abs(ry) else ("y", ry)
+            ways = ("left", "right") if axis == "x" else ("up", "down")
+            self.step(v, lambda: m.keyboard.wheel.arrow(ways[0]), lambda: m.keyboard.wheel.arrow(ways[1]),
+                      KEY_REPEAT, KEY_DELAY, axis)
+            if m.out.holding(ZOOMING):
+                m.out.unhold(ZOOMING)
+            return
+        zooming = False
+        # L2 + left stick sets the text size instead of moving the pointer,
+        # unless L2 + ✕ is dragging with the right button.
+        fonting = m.trig[e.ABS_Z] and not m.r2_held() and not m.out.holding(e.BTN_SOUTH)
+        self.font(ly if fonting else 0.0)
         speed = POINTER_MAX * dt
-        self.acc[0] += lx * speed
-        self.acc[1] += ly * speed
+        if not fonting:
+            self.acc[0] += lx * speed
+            self.acc[1] += ly * speed
         if m.window.update(lx, ly, rx, ry, dt):
             pass                                # R2 held: right stick resizes
         elif m.trig[e.ABS_Z]:
-            # L2 + right stick: sideways = workspaces, up/down = text size.
+            # L2 + right stick: sideways = workspaces, up/down = zoom.
             # The further-pushed direction wins, so a slightly diagonal push is one.
             layer = "L2 + R-stick"
             if abs(rx) > abs(ry):
                 self.step(rx, lambda: self.to_workspace(layer, -1),
                           lambda: self.to_workspace(layer, 1), WORKSPACE_REPEAT, WORKSPACE_DELAY)
-            else:
-                self.step(ry, lambda: self.zoom(ZOOM_IN, layer), lambda: self.zoom(ZOOM_OUT, layer))
+            elif ry:
+                # Zoom as Ctrl + scroll: smooth, faster the further it's pushed.
+                if not m.out.holding(ZOOMING):
+                    m.out.hold(ZOOMING, [CTRL])
+                    m.flash.show(layer, "Zoom")
+                zooming = True
+                self.acc[2] -= ry * SCROLL_MAX * dt
         elif m.keyboard.open:
             # The on-screen keyboard: the right stick steps the highlight like
             # the D-pad, the further-pushed direction wins.
@@ -77,8 +103,10 @@ class Sticks:
             self.step(ry, lambda: m.out.tap([e.KEY_UP]), lambda: m.out.tap([e.KEY_DOWN]))
         else:
             self.step_dir = 0
-            self.acc[2] += ry * SCROLL_MAX * dt     # natural: stick up moves the content up
+            self.acc[2] -= ry * SCROLL_MAX * dt     # like a wheel: stick down scrolls down, as sideways does
             self.acc[3] += rx * SCROLL_MAX * dt
+        if not zooming and m.out.holding(ZOOMING):
+            m.out.unhold(ZOOMING)               # Ctrl up once the stick or L2 is let go
         wrote = False
         for i, code in enumerate((e.REL_X, e.REL_Y, e.REL_WHEEL_HI_RES, e.REL_HWHEEL_HI_RES)):
             n = int(self.acc[i])
@@ -108,9 +136,18 @@ class Sticks:
             return
         (negative if way[1] < 0 else positive)()
 
-    def zoom(self, bind: Bind, inputs: str) -> None:
+    def font(self, v: float) -> None:
+        # One text size step per push (up = bigger), repeating while held.
+        way = 0 if abs(v) < ZOOM_THRESHOLD else (-1 if v < 0 else 1)
+        now = time.monotonic()
+        if not way or (way == self.font_dir and now < self.font_next):
+            self.font_dir = way
+            return
+        self.font_next = now + (ZOOM_REPEAT if way == self.font_dir else WORKSPACE_DELAY)
+        self.font_dir = way
+        bind = FONT_BIGGER if way < 0 else FONT_SMALLER
         self.m.out.tap(bind.keys)
-        self.m.flash.show(inputs, bind.label)
+        self.m.flash.show("L2 + L-stick " + ("↑" if way < 0 else "↓"), bind.label)
 
     def to_workspace(self, inputs: str, way: int) -> None:
         # Workspaces with windows on this monitor, then one new empty one.

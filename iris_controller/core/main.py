@@ -10,6 +10,7 @@ import sys
 import time
 
 from ..device.finder import find_controller
+from ..device.readers import Readers
 from ..device.watchdog import Watchdog
 from ..keymap import bindings, user_binds
 from ..keymap.docs import keymap_markdown
@@ -53,6 +54,7 @@ def main() -> int:
     sel = selectors.DefaultSelector()
     reports = keyboard.PointerReports(sel, m.keyboard.line)
     dog = Watchdog()
+    Readers(m)                          # flashes other programs reading the pad
     last_tick = time.monotonic()
     last_game = 0.0
     last_scan = 0.0

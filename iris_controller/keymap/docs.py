@@ -8,8 +8,8 @@ from evdev import ecodes as e
 from ..core.config import LABELS
 from ..modes.talk import DICTATE_SOCK, IRIS_URL
 from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
-                       L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ZOOM_IN,
-                       ZOOM_OUT, BASE_HOLD, BASE_TAP, DPAD_ARROWS)
+                       L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD,
+                       BASE_HOLD, BASE_TAP, DPAD_ARROWS)
 
 
 def keymap() -> dict:
@@ -37,8 +37,7 @@ def keymap() -> dict:
         add(e.BTN_TR, "Hold: dictate")
     if IRIS_URL:
         add(e.BTN_TR, "Tap, then hold: talk to Iris")
-    add(e.BTN_TL, "Hold: on-screen keyboard")
-    add(e.BTN_TL, "Twice: keep the keyboard open (L1 again closes it)")
+    add(e.BTN_TL, "On-screen keyboard on / off")
     add("rstick", "On-screen keyboard: move between keys")
     if L1_COMBOS:
         add(e.BTN_TL, "Hold: combo layer")
@@ -47,7 +46,8 @@ def keymap() -> dict:
     add(e.ABS_Z, "Hold + ✕: right click")
     add("dpad", "Arrow keys (hold to repeat)")
     add(e.ABS_Z, "Hold + right stick ←/→: previous / next workspace")
-    add(e.ABS_Z, "Hold + right stick ↑/↓: bigger / smaller text")
+    add(e.ABS_Z, "Hold + right stick ↑/↓: zoom in / out (Ctrl + scroll)")
+    add(e.ABS_Z, "Hold + left stick ↑/↓: bigger / smaller text")
     add(e.ABS_Z, "Hold + D-pad ↑/↓: volume up / down")
     add(e.ABS_Z, "Hold + D-pad ←/→: back / forward")
     add(e.ABS_RZ, "Hold + left stick: move window")
@@ -65,8 +65,10 @@ def keymap() -> dict:
               {"keys": ["Hold " + name(e.ABS_Z), name(e.BTN_SOUTH)], "action": RIGHT_CLICK.label},
               {"keys": ["Hold " + name(e.ABS_Z), "R-stick ←"], "action": "Previous workspace"},
               {"keys": ["Hold " + name(e.ABS_Z), "R-stick →"], "action": "Next workspace"},
-              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ↑"], "action": ZOOM_IN.label},
-              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ↓"], "action": ZOOM_OUT.label},
+              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ↑"], "action": "Zoom in"},
+              {"keys": ["Hold " + name(e.ABS_Z), "R-stick ↓"], "action": "Zoom out"},
+              {"keys": ["Hold " + name(e.ABS_Z), "L-stick ↑"], "action": "Bigger text"},
+              {"keys": ["Hold " + name(e.ABS_Z), "L-stick ↓"], "action": "Smaller text"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↑"], "action": "Volume up"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ↓"], "action": "Volume down"},
               {"keys": ["Hold " + name(e.ABS_Z), "D-pad ←"], "action": NAV_BACK.label},
@@ -153,9 +155,8 @@ def cheatsheet() -> dict:
             row([sq], "Enter"), row([ci], "Escape"), row([tr], "Backspace"),
             row([sq, sq], ENTER_DOUBLE.label),
             row([R2, sq], "Space"),
-            row(["L1 hold"], "On-screen keyboard"),
-            row(["L1", "L1"], "Keep keyboard open"),
-            row(["L1 hold", "R-stick"], "Pick a key")]},
+            row(["L1"], "On-screen keyboard on / off"),
+            row(["L-stick", cr], "Keyboard: pick a letter")]},
         {"title": "Edit & browse", "rows": [
             row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
             row([L2, ci], L2_COMBOS[e.BTN_EAST].label),

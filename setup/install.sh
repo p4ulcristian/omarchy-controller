@@ -9,6 +9,7 @@ KEYBOARD=p4ulcristian.iris-controller-keyboard
 LAUNCHER=p4ulcristian.iris-controller-launcher
 FLASH=p4ulcristian.iris-controller-flash
 GUIDE=p4ulcristian.iris-controller-guide
+COMPOSE=p4ulcristian.iris-controller-compose
 OLD=p4ulcristian.iris-controller-hud   # the flash's old name
 
 python3 -c "import evdev" 2>/dev/null || {
@@ -29,12 +30,13 @@ ln -sfn "$SCREEN/keyboard" ~/.config/omarchy/plugins/$KEYBOARD
 ln -sfn "$SCREEN/launcher" ~/.config/omarchy/plugins/$LAUNCHER
 ln -sfn "$SCREEN/flash" ~/.config/omarchy/plugins/$FLASH
 ln -sfn "$SCREEN/guide" ~/.config/omarchy/plugins/$GUIDE
+ln -sfn "$SCREEN/compose" ~/.config/omarchy/plugins/$COMPOSE
 rm -f ~/.config/omarchy/plugins/$OLD
 
-# Enable the cheat sheet, keyboard, launcher, flash and guide plugins in the Omarchy shell.
+# Enable the cheat sheet, keyboard, launcher, flash, guide and compose plugins in the Omarchy shell.
 SHELL_JSON=~/.config/omarchy/shell.json
 if [ -f "$SHELL_JSON" ]; then
-  python3 - "$SHELL_JSON" "$OLD" "$PLUGIN" "$KEYBOARD" "$LAUNCHER" "$FLASH" "$GUIDE" <<'PY'
+  python3 - "$SHELL_JSON" "$OLD" "$PLUGIN" "$KEYBOARD" "$LAUNCHER" "$FLASH" "$GUIDE" "$COMPOSE" <<'PY'
 import json, sys
 path, old, *wanted = sys.argv[1:]
 with open(path) as f:

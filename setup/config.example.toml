@@ -16,6 +16,19 @@
 # secret_file = "~/path/to/.env"
 # secret_key = "IRIS_INTERNAL_SECRET"
 
+# Create held = compose: say what to write ("say I'll be late, keep it short",
+# "kakapo dot com, spelled K A K A P O") and a local model (Ollama) writes it
+# into the focused box. A panel shows your last prompt and the draft; hold
+# Create again to change it ("shorter"). ✕ done, △ undo, ○ put the box back.
+# L2 + Create starts from the box's whole text and rewrites it. Needs
+# the dictate socket above (with "stop-return") and the model pulled
+# (ollama pull gemma4:e4b). Nothing leaves the machine.
+# [compose]
+# enabled = true
+# model = "gemma4:e4b"
+# url = "http://127.0.0.1:11434"
+# words = ["Salesforce", "kakapo"]   # names and brands it should recognise when misheard
+
 # The on-screen keyboard (L1 held) has a top row of extras: pick one and ✕
 # types the whole text, or presses the shortcut. These replace the defaults;
 # [] hides the row.

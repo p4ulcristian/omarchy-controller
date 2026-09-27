@@ -7,6 +7,7 @@ from evdev import ecodes as e
 
 from ..core.config import LABELS
 from ..modes.talk import DICTATE_SOCK, IRIS_URL
+from ..screen.compose import compose
 from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD,
                        BASE_HOLD, BASE_TAP, DPAD_ARROWS)
@@ -37,6 +38,9 @@ def keymap() -> dict:
         add(e.BTN_TR, "Hold: dictate")
     if IRIS_URL:
         add(e.BTN_TR, "Tap, then hold: talk to Iris")
+    if compose.ENABLED:
+        add(e.BTN_SELECT, "Hold: tell a local model what to write; the box changes (✕ done, △ undo, ○ put back)")
+        add(e.ABS_Z, "Hold + Create: rewrite the box's whole text by voice")
     add(e.BTN_TL, "On-screen keyboard on / off")
     add("rstick", "On-screen keyboard: move between keys")
     if L1_COMBOS:
@@ -126,6 +130,8 @@ def cheatsheet() -> dict:
              "mic": "This sheet"}
     if DICTATE_SOCK:
         short["r1"] = "Voice"
+    if compose.ENABLED:
+        short["create"] = "Compose"
     short["l1"] = "Keyboard"
     if L1_COMBOS:
         short["l1"] = "Your combos"
@@ -145,6 +151,9 @@ def cheatsheet() -> dict:
         voice.append(row(["R1 hold"], "Dictate"))
     if IRIS_URL:
         voice.append(row(["R1", "R1 hold"], "Talk to Iris"))
+    if compose.ENABLED:
+        voice.append(row(["Create hold"], "Say what to write"))
+        voice.append(row([name(e.ABS_Z), "Create"], "Rewrite the box by voice"))
     categories = [
         {"title": "Pointer", "rows": [
             row(["L-stick"], "Move pointer"),

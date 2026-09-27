@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "p4ulcristian.iris-controller-compose",
+  "name": "Controller compose panel",
+  "version": "1.0.0",
+  "author": "p4ulcristian",
+  "description": "Draft panel for iris-controller (Create): shows the text being worked out by voice with a local model, and what the buttons do. The controller owns the state; this only draws it.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": false,
+  "entryPoints": {
+    "panel": "Compose.qml"
+  }
+}

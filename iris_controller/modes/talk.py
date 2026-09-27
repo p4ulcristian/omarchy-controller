@@ -39,6 +39,23 @@ def dictate(verb: str) -> None:
         log.warning("dictate %s failed: %s", verb, exc)
 
 
+def stop_return() -> str:
+    """Stop dictation and get the transcript back instead of it being typed.
+    Blocks while it transcribes. Empty = nothing heard, or it failed."""
+    try:
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(65)
+        s.connect(DICTATE_SOCK)
+        s.sendall(b"stop-return")
+        s.shutdown(socket.SHUT_WR)
+        text = s.recv(65536).decode().strip()
+        s.close()
+        return text
+    except Exception as exc:
+        log.warning("dictate stop-return failed: %s", exc)
+        return ""
+
+
 def iris_secret() -> str:
     """The shared secret, read from a KEY=value file so it never sits in the config."""
     path = IRIS.get("secret_file")
@@ -68,7 +85,7 @@ class Talk:
         self.down = 0.0
 
     def press(self) -> None:
-        if not DICTATE_SOCK or self.active:
+        if not DICTATE_SOCK or self.active or self.m.compose.recording:
             return
         self.down = time.monotonic()
         if IRIS_URL and self.down - self.tapped < DOUBLE_TAP_WINDOW:
@@ -100,17 +117,7 @@ class Talk:
 
     def send_to_iris(self) -> None:
         """Runs in a thread: stop dictation, get the transcript, post it to Iris."""
-        try:
-            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.settimeout(65)
-            s.connect(DICTATE_SOCK)
-            s.sendall(b"stop-return")
-            s.shutdown(socket.SHUT_WR)
-            text = s.recv(65536).decode().strip()
-            s.close()
-        except Exception as exc:
-            log.warning("dictate stop-return failed: %s", exc)
-            return
+        text = stop_return()
         if not text:
             return
         req = urllib.request.Request(

@@ -23,6 +23,8 @@ from ..modes.talk import Talk
 from ..modes.window import WindowMode
 from ..output import hyprland
 from ..output.virtual_input import VirtualInput
+from ..screen.compose import compose
+from ..screen.compose.compose import Compose
 from ..screen.flash.flash import Flash
 from ..screen.guide import guide
 from ..screen.guide.guide import Guide
@@ -54,6 +56,7 @@ class Mapper:
         self.window = WindowMode(self)
         self.game = GameMode(self)
         self.talk = Talk(self)
+        self.compose = Compose(self)
 
         self.devs: list[evdev.InputDevice] = []
         self.pad: evdev.InputDevice | None = None
@@ -130,6 +133,8 @@ class Mapper:
         if self.help.open:
             self.help.show(False)
         self.talk.stop()
+        if self.compose.open:
+            self.compose.close()
         self.guide.update(None)
         self.out.release_all()
 
@@ -177,6 +182,8 @@ class Mapper:
 
         if self.launcher.open and self.launcher.button(code, down):
             return
+        if self.compose.button(code, down):     # ✕ □ ○ △ while the draft panel shows
+            return
 
         if code == e.BTN_WEST and not down:
             out.unhold("r2_space")               # let go of an R2 + □ space, if it was one
@@ -204,6 +211,11 @@ class Mapper:
         if down and self.trig[e.ABS_Z] and code in L2_COMBOS:
             out.fire(L2_COMBOS[code])
             flash.show("L2 + " + PARTS[code][1], L2_COMBOS[code].label)
+            return
+        if code == e.BTN_SELECT and compose.ENABLED:
+            self.compose.create(down, load=self.trig[e.ABS_Z])   # L2 + Create: start from the box's text
+            if down and self.trig[e.ABS_Z]:
+                self.flash.show("L2 + Create", "Rewrite the box by voice")
             return
         # A layer held + a button with no combo on it: dropped, not the plain
         # action. L2 + ✕ (right click) and the stick clicks aren't combos.
@@ -402,4 +414,5 @@ class Mapper:
         self.check_guide()
         self.keyboard.tick()
         self.launcher.tick()
+        self.compose.tick()
         self.sticks.update(dt)

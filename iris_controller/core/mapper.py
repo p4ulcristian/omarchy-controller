@@ -35,7 +35,7 @@ from .sticks import Sticks
 log = logging.getLogger("iris-controller")
 GUIDE_STICK = 0.3         # a stick pushed this far counts as using it (hides the guide)
 
-TRIGGER_ON, TRIGGER_OFF = 0.5, 0.3
+TRIGGER_ON, TRIGGER_OFF = 0.2, 0.1   # a light touch holds L2/R2, no squeezing
 CHORD_WINDOW = 0.06         # L2 within this of R2 = fullscreen
 
 

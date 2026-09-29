@@ -6,11 +6,12 @@ from __future__ import annotations
 from evdev import ecodes as e
 
 from ..core.config import LABELS
+from ..device import profiles
 from ..modes.talk import DICTATE_SOCK, IRIS_URL
 from ..screen.compose import compose
 from .bindings import (DOUBLE_TRIGGERS, ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS,
                        L2_COMBOS, NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD,
-                       BASE_HOLD, BASE_TAP, DPAD_ARROWS)
+                       BASE_HOLD, BASE_TAP, DPAD_ARROWS, OMARCHY_MENU)
 
 
 def keymap() -> dict:
@@ -37,11 +38,13 @@ def keymap() -> dict:
     if DICTATE_SOCK:
         add(e.BTN_TR, "Hold: dictate")
     if IRIS_URL:
+        add(e.BTN_TL, "Hold: talk to Iris")
+        add(e.BTN_TL, "Tap: Iris's card on / off")
         add(e.BTN_TR, "Tap, then hold: talk to Iris")
     if compose.ENABLED:
         add(e.BTN_SELECT, "Hold: tell Claude what to write; the box changes (✕ done, △ undo, ○ put back, D-pad + □ a recent text)")
         add(e.ABS_Z, "Hold + Create: rewrite the box's whole text by voice")
-    add(e.BTN_TL, "On-screen keyboard on / off")
+    add(e.BTN_START, "On-screen keyboard on / off")
     add("rstick", "On-screen keyboard: move between keys")
     if L1_COMBOS:
         add(e.BTN_TL, "Hold: combo layer")
@@ -59,6 +62,7 @@ def keymap() -> dict:
     add(e.ABS_RZ, "Hold + □: space")
     add(e.ABS_RZ, "Hold + △: refresh")
     add(e.ABS_RZ, "Dragging + right stick ←/→: take window to prev / next workspace")
+    add("touchpad", "Slide: move the pointer")
     add("touchpad", "Tap: arrow key toward that side")
     add("touchpad", "Click & hold: arrow key, repeating")
     add("mic", "Show this cheat sheet (any button closes it)")
@@ -125,14 +129,15 @@ def cheatsheet() -> dict:
     parts: {id: {name, actions: [label]}}; categories: [{title, rows: [{keys, action}]}]."""
     parts = keymap()["parts"]
     short = {"cross": "Click", "circle": "Escape", "square": "Enter", "triangle": "Backspace",
-             "lstick": "Pointer", "rstick": "Scroll", "options": "Omarchy menu", "ps": "Apps / game mode",
-             "l2": "Shortcuts", "r2": "Window mode", "dpad": "Arrow keys", "touchpad": "Arrow keys",
+             "lstick": "Pointer", "rstick": "Scroll", "options": "Keyboard", "ps": "Apps / game mode",
+             "l2": "Shortcuts", "r2": "Window mode", "dpad": "Arrow keys", "touchpad": "Pointer & arrow keys",
              "mic": "This sheet"}
     if DICTATE_SOCK:
         short["r1"] = "Voice"
     if compose.ENABLED:
         short["create"] = "Compose"
-    short["l1"] = "Keyboard"
+    if IRIS_URL:
+        short["l1"] = "Iris"
     if L1_COMBOS:
         short["l1"] = "Your combos"
     for pid, part in parts.items():
@@ -141,8 +146,13 @@ def cheatsheet() -> dict:
     def name(code):
         return PARTS[code][1]
 
+    pad = profiles.active
+    if not pad.touchpad:
+        parts.pop("touchpad", None)
+    parts["mic"]["name"] = pad.sheet_name
+
     def row(keys, action):
-        return {"keys": keys, "action": LABELS.get(action, action).split(" (")[0]}
+        return {"keys": [pad.rename(k) for k in keys], "action": LABELS.get(action, action).split(" (")[0]}
 
     L2, R2 = name(e.ABS_Z), name(e.ABS_RZ)
     sq, ci, tr, cr = name(e.BTN_WEST), name(e.BTN_EAST), name(e.BTN_NORTH), name(e.BTN_SOUTH)
@@ -150,7 +160,8 @@ def cheatsheet() -> dict:
     if DICTATE_SOCK:
         voice.append(row(["R1 hold"], "Dictate"))
     if IRIS_URL:
-        voice.append(row(["R1", "R1 hold"], "Talk to Iris"))
+        voice.append(row(["L1 hold"], "Talk to Iris"))
+        voice.append(row(["L1"], "Iris's card"))
     if compose.ENABLED:
         voice.append(row(["Create hold"], "Say what to write"))
         voice.append(row([name(e.ABS_Z), "Create"], "Rewrite the box by voice"))
@@ -164,13 +175,13 @@ def cheatsheet() -> dict:
             row([sq], "Enter"), row([ci], "Escape"), row([tr], "Backspace"),
             row([sq, sq], ENTER_DOUBLE.label),
             row([R2, sq], "Space"),
-            row(["L1"], "On-screen keyboard on / off"),
+            row([name(e.BTN_START)], "On-screen keyboard on / off"),
             row(["L-stick", cr], "Keyboard: pick a letter")]},
         {"title": "Edit & browse", "rows": [
             row([L2, sq], L2_COMBOS[e.BTN_WEST].label),
             row([L2, ci], L2_COMBOS[e.BTN_EAST].label),
             row(["D-pad"], "Arrow keys"),
-            row(["Touchpad"], "Arrow key toward that side"),
+            *([row(["Touchpad"], "Slide: pointer; tap: arrow key toward that side")] if pad.touchpad else []),
             row([L2, "D-pad ←/→"], f"{NAV_BACK.label} / {NAV_FORWARD.label.lower()}"),
             row([R2, tr], REFRESH.label)]},
         {"title": "Windows", "rows": [
@@ -183,7 +194,7 @@ def cheatsheet() -> dict:
             row([L2, "R-stick ←/→"], "Workspaces"),
             row([L2, "R-stick ↑/↓"], "Text size"),
             row([L2, "D-pad ↑/↓"], "Volume"),
-            row([name(e.BTN_START)], BASE_TAP[e.BTN_START].label)]},
+            row([L2, name(e.BTN_START)], OMARCHY_MENU.label)]},
         {"title": "Voice & system", "rows": voice + [
             row([name(e.BTN_MODE)], "App launcher"),
             row([name(e.BTN_MODE) + " hold 1 s"], "Game mode on/off"),
@@ -196,4 +207,5 @@ def cheatsheet() -> dict:
     if own:
         categories.append({"title": "Your shortcuts", "rows": own})
     categories.append({"title": "In the Omarchy menu", "rows": keymap()["menu"]})
-    return {"parts": parts, "categories": categories}
+    return {"parts": parts, "categories": categories,
+            "pad": {"title": pad.title, "drawing": pad.drawing, "colors": pad.colors}}

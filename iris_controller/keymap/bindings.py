@@ -27,10 +27,10 @@ BASE_HOLD = {
     e.BTN_WEST: Bind([e.KEY_ENTER], "Enter"),                     # □
     e.BTN_NORTH: Bind([e.KEY_BACKSPACE], "Backspace"),            # △
 }
-# One-shot chords on press. Create is free.
-BASE_TAP = {
-    e.BTN_START: Bind([SUPER, e.KEY_SPACE], "Omarchy menu"),      # Options
-}
+# One-shot chords on press. Options is the on-screen keyboard, Create compose,
+# L1 talks to Iris (tap: her card); none of them send keys.
+BASE_TAP: dict[int, Bind] = {}
+OMARCHY_MENU = Bind([SUPER, e.KEY_SPACE], "Omarchy menu")      # L2 + Options
 ENTER_BTN = e.BTN_WEST      # □: Enter, double tap = Ctrl+Enter
 ENTER_DOUBLE = Bind([CTRL, e.KEY_ENTER], "Ctrl + Enter (double tap)")       # □ twice
 # L2 is a modifier for the combos below; L2 + R2 together is fullscreen.
@@ -52,6 +52,7 @@ L2_COMBOS = {
     e.BTN_WEST: Bind([SUPER, e.KEY_C], "Copy"),                   # □
     e.BTN_THUMBR: Bind([CTRL, e.KEY_0], "Reset zoom (click the stick)"),            # right stick click
     e.BTN_EAST: Bind([SUPER, e.KEY_V], "Paste"),                  # ○
+    e.BTN_START: OMARCHY_MENU,                                    # Options
 }
 # PS button held + another button: one-shot chord (cancels the tap and hold).
 # Empty: the PS button only toggles game mode.
@@ -79,6 +80,15 @@ PARTS = {
     e.BTN_START: ("options", "Options"), e.BTN_SELECT: ("create", "Create"),
     e.BTN_MODE: ("ps", "PS"), e.ABS_Z: ("l2", "L2"), e.ABS_RZ: ("r2", "R2"),
 }
+
+
+
+def use_profile(profile) -> None:
+    """The pad in use (device/profiles.py): its names are printed, A for ✕ on an Xbox pad."""
+    from ..device import profiles
+    profiles.active = profile
+    for code, (pid, _) in PARTS.items():
+        PARTS[code] = (pid, profile.names.get(code, PARTS[code][1]))
 
 
 def output_keys() -> set[int]:

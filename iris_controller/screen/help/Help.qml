@@ -18,6 +18,10 @@ Item {
   property bool opened: false
   property var parts: ({})
   property var categories: []
+  // Which pad: { "title": "XBOX", "drawing": false, "colors": { "cross": "#…" } }.
+  // With no drawing (only the DualSense has one) the sheet is the lists alone.
+  property var padInfo: ({ "title": "DUALSENSE", "drawing": true })
+  readonly property bool drawing: padInfo.drawing !== false
 
   // The sheet is laid out this wide, as tall as its content, and the card
   // is scaled down until it fits the monitor.
@@ -37,14 +41,14 @@ Item {
   readonly property int bandBottom: 560
   readonly property int lineH: 28
   readonly property int labelGap: 12
-  readonly property int listsTop: 610
+  readonly property int listsTop: drawing ? 610 : 80
 
   readonly property color ink: Color.popups.text
   readonly property color faint: Util.alpha(Color.popups.text, 0.55)
   readonly property color hud: Color.accent
 
-  // PlayStation symbol colors.
-  readonly property var symbolColor: ({
+  // Face button colors, by where they sit (PlayStation's unless the pad says).
+  readonly property var symbolColor: padInfo.colors || ({
     "triangle": "#3fc8a8", "circle": "#e8616b", "cross": "#7b9fe8", "square": "#d58ad8"
   })
 
@@ -66,6 +70,7 @@ Item {
   // height as the ones above it allow, then pull the stack back inside the band.
   function layoutSide(anchorMap) {
     var items = []
+    if (!drawing) return items
     for (var id in anchorMap) {
       var part = root.parts[id]
       if (!part || !part.actions || part.actions.length === 0) continue
@@ -109,6 +114,7 @@ Item {
       var p = JSON.parse(payloadJson || "{}")
       root.parts = p.parts || {}
       root.categories = p.categories || []
+      root.padInfo = p.pad || { "title": "DUALSENSE", "drawing": true }
     } catch (e) {}
     root.opened = true
   }
@@ -377,7 +383,7 @@ Item {
           anchors.leftMargin: 18
           anchors.baseline: tag.baseline
           textFormat: Text.PlainText
-          text: "DUALSENSE // INPUT MAP"
+          text: (root.padInfo.title || "DUALSENSE") + " // INPUT MAP"
           font.family: Style.font.family
           font.bold: true
           font.pixelSize: 30
@@ -417,6 +423,7 @@ Item {
 
         // Soft glow behind the pad.
         Rectangle {
+          visible: root.drawing
           x: root.padX + 60
           y: root.padY + 20
           width: 1000 * root.padScale - 120
@@ -432,6 +439,7 @@ Item {
         // The controller: our own flat drawing (dualsense.svg, no logos),
         // shown in a 1000 x 703 box the anchors are measured in.
         Image {
+          visible: root.drawing
           x: root.padX
           y: root.padY
           width: 1000 * root.padScale

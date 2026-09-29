@@ -1,4 +1,4 @@
-"""On-screen keyboard (L1 opens it, L1 again closes it). The controller keeps the layout and the
+"""On-screen keyboard (Options opens it, Options again closes it). The controller keeps the layout and the
 highlight and types the keys; Keyboard.qml next to this file only draws them,
 and reports the real pointer on its keys back over a socket. Two styles,
 switched with the Create button while it shows: the QWERTY grid here, and
@@ -16,6 +16,7 @@ import time
 from evdev import ecodes as e
 
 from ...core.config import CONFIG
+from ...device import profiles
 from ...keymap.bindings import SHIFT
 from ...keymap.user_binds import parse_keys
 from . import wheel
@@ -118,14 +119,10 @@ class OnScreenKeyboard:
         self.wheel.reset()
         if show:
             rows = [[{"label": k[0], "shift": k[1], "w": k[3]} for k in row] for row in ROWS]
-            self.send(["summon", PLUGIN, json.dumps({"rows": rows, **self.wheel.payload(), **self.state()})])
+            self.send(["summon", PLUGIN, json.dumps({"rows": rows, "buttons": profiles.active.buttons(),
+                                                 **self.wheel.payload(), **self.state()})])
         else:
             self.send(["hide", PLUGIN])
-
-    def l1(self, down: bool) -> None:
-        """L1 opens the keyboard and L1 again closes it (so does ○); no holding."""
-        if down:
-            self.toggle(not self.open)
 
     def state(self) -> dict:
         w = self.wheel.state()
@@ -161,8 +158,8 @@ class OnScreenKeyboard:
 
     def button(self, code, down: bool) -> bool:
         # Buttons while the keyboard shows. True = handled here.
-        if code == e.BTN_TL:
-            return False                          # L1 up: the mapper hides the keyboard
+        if code in (e.BTN_START, e.BTN_TL):
+            return False                          # Options: the mapper closes the keyboard; L1: Iris
         if code == e.BTN_TR and not self.m.talk.active:   # not while dictating
             self.shift_held = down               # R1 held = shift
             self.update()

@@ -11,11 +11,10 @@ Press the mic button to toggle it as an overlay.
 | ○ | Escape |
 | □ | Enter |
 | △ | Backspace |
-| L1 | On-screen keyboard on / off |
 | Left stick | Move pointer |
 | Right stick | Scroll |
 | Right stick | On-screen keyboard: move between keys |
-| Options | Omarchy menu |
+| Options | On-screen keyboard on / off |
 | PS | Tap: app launcher (D-pad / left stick move, ✕ opens, ○ closes) |
 | PS | Hold 1 s: game mode on/off |
 | L2 | Hold + ✕: right click |
@@ -30,6 +29,7 @@ Press the mic button to toggle it as an overlay.
 | R2 | Hold + △: refresh |
 | R2 | Dragging + right stick ←/→: take window to prev / next workspace |
 | D-pad | Arrow keys (hold to repeat) |
+| Touchpad | Slide: move the pointer |
 | Touchpad | Tap: arrow key toward that side |
 | Touchpad | Click & hold: arrow key, repeating |
 | Mic | Show this cheat sheet (any button closes it) |
@@ -60,6 +60,7 @@ Press the mic button to toggle it as an overlay.
 | Hold L2 + □ | Copy |
 | Hold L2 + Right stick | Reset zoom (click the stick) |
 | Hold L2 + ○ | Paste |
+| Hold L2 + Options | Omarchy menu |
 
 ## In the Omarchy menu
 

@@ -20,6 +20,10 @@ BUTTON_NAMES = {
     "l1": e.BTN_TL, "r1": e.BTN_TR, "l2": e.ABS_Z, "r2": e.ABS_RZ,
     "l3": e.BTN_THUMBL, "r3": e.BTN_THUMBR,
     "options": e.BTN_START, "create": e.BTN_SELECT, "ps": e.BTN_MODE,
+    # Xbox names, by where the button sits. "x" is already ✕, so Xbox X is "□" or "square".
+    "a": e.BTN_SOUTH, "b": e.BTN_EAST, "y": e.BTN_NORTH,
+    "lb": e.BTN_TL, "rb": e.BTN_TR, "lt": e.ABS_Z, "rt": e.ABS_RZ, "ls": e.BTN_THUMBL, "rs": e.BTN_THUMBR,
+    "menu": e.BTN_START, "view": e.BTN_SELECT, "xbox": e.BTN_MODE,
 }
 DPAD_NAMES = {"↑": "up", "→": "right", "↓": "down", "←": "left",
               "up": "up", "right": "right", "down": "down", "left": "left"}
@@ -53,14 +57,14 @@ def load_binds() -> None:
             if spec.endswith(" double"):
                 code = BUTTON_NAMES[spec.removesuffix(" double").strip()]
                 if code not in (e.ABS_Z, e.ABS_RZ):
-                    raise ValueError("double tap works on L2 and R2")
+                    raise ValueError("double tap works on L2 and R2 (LT and RT)")
                 DOUBLE_TRIGGERS[code] = action
             else:
                 layer, _, button = (x.strip() for x in spec.partition("+"))
-                if layer == "r2":
+                if layer in ("r2", "rt"):
                     R2_DPAD[DPAD_NAMES[button.removeprefix("d-pad").strip()]] = action
                 else:
-                    table = {"l1": L1_COMBOS, "ps": PS_COMBOS}[layer]
+                    table = {"l1": L1_COMBOS, "lb": L1_COMBOS, "ps": PS_COMBOS, "xbox": PS_COMBOS}[layer]
                     table[BUTTON_NAMES[button]] = action
         except (KeyError, ValueError) as exc:
             log.warning("config bind %r skipped: %s", entry, exc)

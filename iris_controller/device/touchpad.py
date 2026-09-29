@@ -1,5 +1,6 @@
 """The touchpad: a tap (touch and lift, no slide) or a click is an arrow key:
-the side you touch is the arrow sent. Sliding does nothing."""
+the side you touch is the arrow sent. Sliding moves the pointer, like a
+laptop trackpad; [touchpad] speed in the config scales it."""
 
 from __future__ import annotations
 
@@ -7,12 +8,14 @@ import time
 
 from evdev import ecodes as e
 
+from ..core.config import CONFIG
 from ..keymap.bindings import ARROWS
 
 SLIDE = 60                      # movement that makes a touch a slide, not a tap
 TOUCH_SIZE = (1920, 1080)       # DualSense touchpad resolution
 CLICK_DEADZONE = 0.1            # taps/clicks this close to the centre have no direction: ignored
 TAP_TIME = 0.25                 # a touch lifted within this, without sliding, is a tap
+SPEED = float(CONFIG.get("touchpad", {}).get("speed", 0.3))   # pointer px per touchpad unit
 
 
 class Touchpad:
@@ -24,6 +27,8 @@ class Touchpad:
         self.click_pending = False              # pad pressed; zone decided at the end of the report
         self.since = 0.0                        # when the finger landed, for taps
         self.touching = False
+        self.last: list[int] | None = None      # finger position the pointer last moved from
+        self.acc = [0.0, 0.0]                   # pointer movement not yet sent
 
     def handle(self, ev) -> None:
         if self.m.paused:
@@ -37,8 +42,9 @@ class Touchpad:
                     self.m.flash.show("Touchpad tap", zone.capitalize(), plain=True)
             self.touching = bool(ev.value)
             self.since = time.monotonic()
-            self.pos, self.touch_from = [None, None], None
+            self.pos, self.touch_from, self.last = [None, None], None, None
             self.slid = False
+            self.acc = [0.0, 0.0]
         elif ev.type == e.EV_KEY and ev.code == e.BTN_LEFT:
             if ev.value == 1:
                 # The finger position may come later in the same report, so
@@ -48,8 +54,10 @@ class Touchpad:
                 if self.click_pending:
                     self.on_click()
                 out.unhold("touchclick")
-        elif ev.type == e.EV_SYN and self.click_pending:
-            self.on_click()
+        elif ev.type == e.EV_SYN:
+            if self.click_pending:
+                self.on_click()
+            self.send_move()
         elif ev.type == e.EV_ABS and ev.code in (e.ABS_X, e.ABS_Y) and self.touching:
             self.pos[0 if ev.code == e.ABS_X else 1] = ev.value
             if None not in self.pos:
@@ -87,5 +95,25 @@ class Touchpad:
     def on_move(self, x: int, y: int) -> None:
         if self.touch_from is None:
             self.touch_from = [x, y]             # first position after landing
+        elif self.last is not None:
+            # Sliding: the pointer follows the finger. Movement starts from
+            # where the slide was noticed, so a tap never nudges it.
+            self.acc[0] += (x - self.last[0]) * SPEED
+            self.acc[1] += (y - self.last[1]) * SPEED
+            self.last = [x, y]
         elif max(abs(x - self.touch_from[0]), abs(y - self.touch_from[1])) >= SLIDE:
             self.slid = True
+            self.last = [x, y]
+
+    def send_move(self) -> None:
+        """The pointer movement gathered over one report, whole pixels only."""
+        dx, dy = int(self.acc[0]), int(self.acc[1])
+        if not (dx or dy):
+            return
+        self.acc[0] -= dx
+        self.acc[1] -= dy
+        if dx:
+            self.m.out.rel(e.REL_X, dx)
+        if dy:
+            self.m.out.rel(e.REL_Y, dy)
+        self.m.out.syn()

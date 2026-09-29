@@ -23,7 +23,8 @@ Item {
   readonly property int stagger: 70     // ms between one key popping in and the next
 
   // PlayStation symbol colors.
-  readonly property var symbolColor: ({ "△": "#3fc8a8", "○": "#e8616b", "✕": "#7b9fe8", "□": "#d58ad8" })
+  readonly property var symbolColor: ({ "△": "#3fc8a8", "○": "#e8616b", "✕": "#7b9fe8", "□": "#d58ad8",
+    "A": "#5fbf4a", "B": "#e0524a", "X": "#3f8fe0", "Y": "#e8c23a" })   // PlayStation, then Xbox
 
   readonly property var targetScreen: {
     var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""

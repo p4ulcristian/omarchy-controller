@@ -1,7 +1,10 @@
 """Talk. R1 held = push-to-talk dictation through a Unix socket that takes
-"start" and "stop" (iris-dictation). R1 tapped, then held = the same, but on
-release the transcript goes to an Iris server instead of being typed (the
-socket must also take "stop-return")."""
+"start" and "stop" (iris-dictation). L1 held (or R1 tapped, then held) = the
+same, but on release the transcript goes to an Iris server instead of being
+typed (the socket must also take "stop-return"). Those recordings are tagged
+"iris" ("start iris"), so Iris's card on the desktop (the p4ulcristian.iris-desk
+shell plugin, if it's there) shows them instead of the dictation pill. L1
+tapped opens or closes her card."""
 
 from __future__ import annotations
 
@@ -73,16 +76,36 @@ def iris_secret() -> str:
     return ""
 
 
-def short(text: str, n: int = 60) -> str:
-    return text if len(text) <= n else text[:n - 1] + "…"
+IRIS_CARD = "p4ulcristian.iris-desk"
 
 
 class Talk:
     def __init__(self, m) -> None:
         self.m = m
-        self.active: str | None = None   # "dictate" or "iris" while R1 is held
+        self.active: str | None = None   # "dictate" or "iris" while R1 is held, "l1" while L1 is
         self.tapped = -1.0               # when a quick R1 tap ended: a press soon after talks to Iris
         self.down = 0.0
+
+    def l1(self, down: bool) -> None:
+        """L1 held: talk to Iris. A quick tap is shorter than dictation's minimum,
+        so its stop types nothing: it opens or closes her card instead."""
+        if not IRIS_URL:
+            return
+        if down:
+            if self.active or self.m.compose.recording:
+                return
+            self.down = time.monotonic()
+            self.active = "l1"
+            dictate("start iris")               # tagged: her card listens, not the dictation pill
+            return
+        if self.active != "l1":
+            return
+        self.active = None
+        if time.monotonic() - self.down < DOUBLE_TAP_WINDOW:
+            dictate("stop")
+            self.m.shell.send(IRIS_CARD, ["call", IRIS_CARD, "tapped", ""])
+        else:
+            threading.Thread(target=self.send_to_iris, daemon=True).start()
 
     def press(self) -> None:
         if not DICTATE_SOCK or self.active or self.m.compose.recording:
@@ -90,15 +113,14 @@ class Talk:
         self.down = time.monotonic()
         if IRIS_URL and self.down - self.tapped < DOUBLE_TAP_WINDOW:
             self.active = "iris"
-            self.m.flash.show("R1 + R1", "Talk to Iris", plain=True)
         else:
             self.active = "dictate"
             self.m.flash.show("R1", "Dictate", plain=True)
         self.tapped = -1.0
-        dictate("start")
+        dictate("start iris" if self.active == "iris" else "start")
 
     def release(self) -> None:
-        if not self.active:
+        if self.active in (None, "l1"):    # an L1 talk ends on L1
             return
         quick = time.monotonic() - self.down < DOUBLE_TAP_WINDOW
         was, self.active = self.active, None
@@ -124,8 +146,7 @@ class Talk:
             IRIS_URL, data=json.dumps({"message": text, "source": "desktop"}).encode(),
             headers={"Content-Type": "application/json", "X-Iris-Secret": iris_secret()})
         try:
-            urllib.request.urlopen(req, timeout=10).read()
-            self.m.flash.message(f"To Iris: {short(text)}")
+            urllib.request.urlopen(req, timeout=10).read()   # her card shows it
         except Exception as exc:
             log.warning("iris send failed: %s", exc)
             subprocess.run(["wl-copy", text], check=False)

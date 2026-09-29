@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 
 from ...core.config import CONFIG, LABELS
+from ...device import profiles
 
 PLUGIN = "p4ulcristian.iris-controller-flash"
 
@@ -29,4 +30,5 @@ class Flash:
 
     def message(self, text: str, keys: list[str] = ()) -> None:
         """Always shown: game mode, Iris."""
-        self.shell.send(PLUGIN, ["summon", PLUGIN, json.dumps({"keys": list(keys), "action": text})])
+        keys = [profiles.active.rename(k) for k in keys]   # written as on a DualSense
+        self.shell.send(PLUGIN, ["summon", PLUGIN, json.dumps({"keys": keys, "action": text})])

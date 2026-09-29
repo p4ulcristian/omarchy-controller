@@ -11,13 +11,13 @@ import time
 import evdev
 from evdev import ecodes as e
 
-from ..device import finder
+from ..device import finder, profiles
 from ..device.mic import Mic
 from ..device.touchpad import Touchpad
 from ..keymap.bindings import (BASE_HOLD, BASE_TAP, DOUBLE_TAP_WINDOW, DOUBLE_TRIGGERS, DPAD_ARROWS,
                                ENTER_BTN, ENTER_DOUBLE, FULLSCREEN, PS_COMBOS, L1_COMBOS, L2_COMBOS,
                                NAV_BACK, NAV_FORWARD, PARTS, REFRESH, RIGHT_CLICK, R2_DPAD, ARROWS,
-                               VOLUME_DOWN, VOLUME_UP)
+                               VOLUME_DOWN, VOLUME_UP, use_profile)
 from ..modes.game import GameMode
 from ..modes.talk import Talk
 from ..modes.window import WindowMode
@@ -62,6 +62,7 @@ class Mapper:
         self.pad: evdev.InputDevice | None = None
         self.touch: evdev.InputDevice | None = None
         self.hid_fd: int | None = None          # DualSense raw reports, for the mic button
+        self.profile = profiles.DUALSENSE       # which pad: its codes are translated to the DualSense's
         self.axes: dict[int, float] = {}
         self.ranges: dict[int, tuple[int, int]] = {}
         self.trig = {e.ABS_Z: False, e.ABS_RZ: False}
@@ -83,9 +84,12 @@ class Mapper:
         self.devs = devs
         self.pad, self.touch = finder.split(devs)
         if self.pad:
+            self.profile = profiles.for_pad(self.pad)
+            use_profile(self.profile)
             for code, info in self.pad.capabilities()[e.EV_ABS]:
-                self.ranges[code] = (info.min, info.max)
-            self.hid_fd = finder.find_hidraw(self.pad)
+                self.ranges[self.profile.axis(code)] = (info.min, info.max)
+            if self.profile.streams:
+                self.hid_fd = finder.find_hidraw(self.pad)
         log.info("attached: %s", ", ".join(f"{d.name} ({d.path})" for d in devs))
         self.update_grab()
 
@@ -103,6 +107,7 @@ class Mapper:
             hyprland.set_mouse_focus(self.mouse_focus_user)
         self.devs, self.pad, self.touch, self.grabbed = [], None, None, False
         self.axes.clear()
+        self.ranges.clear()
 
     @property
     def paused(self) -> bool:
@@ -152,10 +157,14 @@ class Mapper:
             self.touchpad.handle(ev)
             return
         if ev.type == e.EV_ABS:
-            self.on_abs(ev.code, ev.value)
+            self.on_abs(self.profile.axis(ev.code), ev.value)
         elif ev.type == e.EV_KEY and ev.value in (0, 1):
             log.debug("key %s %s", e.KEY.get(ev.code) or e.BTN.get(ev.code) or ev.code, ev.value)
-            self.on_button(ev.code, ev.value == 1)
+            if ev.code in self.profile.sheet_keys:
+                if ev.value == 1 and not self.paused:
+                    self.help.show(not self.help.open)
+                return
+            self.on_button(self.profile.key(ev.code), ev.value == 1)
 
     def on_hid(self, report: bytes) -> None:
         if not self.paused and self.mic.pressed(report):
@@ -231,7 +240,11 @@ class Mapper:
             return
         if code == e.BTN_TL:
             self.l1_held = down
-            self.keyboard.l1(down)
+            self.talk.l1(down)                  # held: talk to Iris; tapped: her card
+            return
+        if code == e.BTN_START:
+            if down:
+                self.keyboard.toggle(not self.keyboard.open)
             return
 
         if not down:

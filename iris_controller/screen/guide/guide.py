@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 
 from ...core.config import CONFIG
+from ...device import profiles
 from ...keymap.docs import keymap
 
 PLUGIN = "p4ulcristian.iris-controller-guide"
@@ -52,7 +53,8 @@ def rows(trigger: str) -> list[dict]:
                 r = {"keys": head + [f"{last}/{b}"], "action": pair_label(r["action"], found[j]["action"])}
                 break
         out.append(r)
-    rank = lambda r: next((n for n, p in enumerate(ORDER) if r["keys"][0].startswith(p)), len(ORDER))
+    order = [profiles.active.rename(p) for p in ORDER]
+    rank = lambda r: next((n for n, p in enumerate(order) if r["keys"][0].startswith(p)), len(order))
     return sorted(out, key=rank)
 
 
@@ -67,7 +69,7 @@ class Guide:
             return
         self.side = side
         if side:
-            trigger = "L2" if side == "left" else "R2"
+            trigger = profiles.active.rename("L2" if side == "left" else "R2")
             payload = {"side": side, "trigger": trigger, "rows": rows(trigger)}
             self.shell.send(PLUGIN, ["summon", PLUGIN, json.dumps(payload)])
         else:

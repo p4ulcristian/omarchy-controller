@@ -21,8 +21,9 @@ button):
 | Right stick | Scroll |
 | ✕ / ○ / □ / △ | Left click / Escape / Enter / Backspace |
 | D-pad | Arrow keys (hold to repeat) |
-| Touchpad | Tap: arrow key toward the side you touch (click and hold to repeat) |
-| Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
+| Touchpad | Slide: move the pointer. Tap: arrow key toward the side you touch (click and hold to repeat) |
+| Options | On-screen keyboard on / off (○ closes it too). Petal wheel: left stick picks a petal, △ ○ ✕ □ pick its letter; stick at rest: ✕ space, △ backspace, □ Enter. L2 / R2 switch layers (letters, numbers & symbols, keys), D-pad ↑ ← → sticky Ctrl / Alt / Super, ↓ Tab, R1 held shift, right stick moves the text cursor. Create switches to the QWERTY grid |
+| L2 + Options | Omarchy menu (D-pad or right stick to move, ✕ or □ to open) |
 | L2 + ✕ | Right click (hold = drag) |
 | L2 + right stick ←/→ | Previous / next workspace |
 | L2 + right stick ↑/↓ | Zoom in / out (Ctrl + scroll) |
@@ -35,7 +36,7 @@ button):
 | R2 held, dragging + right stick ←/→ | Take the window to the previous / next workspace |
 | R2 + △ | Refresh (Ctrl + R) |
 | R2 + □ | Space (hold to repeat) |
-| L1 | On-screen keyboard on / off (○ closes it too). Petal wheel: left stick picks a petal, △ ○ ✕ □ pick its letter; stick at rest: ✕ space, △ backspace, □ Enter. L2 / R2 switch layers (letters, numbers & symbols, keys), D-pad ↑ ← → sticky Ctrl / Alt / Super, ↓ Tab, R1 held shift, right stick moves the text cursor. Create switches to the QWERTY grid |
+| L1 | With an Iris server configured: hold to talk to Iris; tap to open or close her card on the desktop |
 | Tap PS | App launcher: the Omarchy launcher's apps as tiles; D-pad or left stick moves, ✕ opens, ○ or PS closes |
 | Hold PS 1 s | Game mode on/off (release / retake the controller) |
 | Create (hold) | Compose: tell Claude (Haiku) what to write ("say I'll be late, keep it short", "kakapo dot com, spelled K A K A P O") and the box changes to it. A panel shows your last prompt and the draft; hold again to change it ("shorter"). ✕ done, △ undo, ○ put the box back; D-pad ←/→ and □ reuse a text you finished before. L2 + Create rewrites the box's whole text |
@@ -45,7 +46,8 @@ button):
 
 - Omarchy (Hyprland with the Omarchy shell). The cheat sheet is an Omarchy
   shell plugin; everything else only needs Hyprland.
-- A DualSense or DualSense Edge, over USB or Bluetooth.
+- A DualSense or DualSense Edge, over USB or Bluetooth. An Xbox controller
+  works too (see [Xbox controllers](#xbox-controllers)).
 - `python-evdev`
 - `steam-devices`, for the udev rules that let your user read the controller
   and create the virtual mouse/keyboard. Already there if Steam is installed.
@@ -84,6 +86,24 @@ and the Omarchy menu opens where the pointer is. In game mode, and when it
 stops, your own value is put back (some setups turn it off so a fullscreen
 game can't lose focus to a neighbouring monitor).
 
+## Xbox controllers
+
+With no DualSense connected, an Xbox pad is used instead. Everything maps by
+where the button sits: A is ✕, B is ○, X is □, Y is △, LB/RB are L1/R1, LT/RT
+are L2/R2, Menu is Options, View is Create and the Xbox button is PS. The
+flash, guide, keyboard and cheat sheet show the Xbox names. The **Share**
+button (Series pads) opens the cheat sheet, which has no drawing for an Xbox
+pad, only the lists. There is no touchpad; the left stick moves the pointer
+as usual. The hang watchdog below is DualSense-only.
+
+| Connection | Driver |
+|---|---|
+| USB cable | `xpad`, in the kernel |
+| Xbox Wireless adapter | `xone` (AUR: `xone-dkms`) |
+| Bluetooth | works as is; `xpadneo` (AUR: `xpadneo-dkms`) adds rumble and cleaner codes |
+
+If both are connected, the DualSense wins.
+
 ## When the link hangs
 
 A DualSense sends hundreds of reports a second even when you don't touch it.
@@ -106,8 +126,9 @@ Optional. Copy [setup/config.example.toml](setup/config.example.toml) to
 - make **R1** push-to-talk dictation with
   [omarchy-dictation](https://github.com/p4ulcristian/omarchy-dictation) (or any daemon whose Unix
   socket accepts `start` / `stop`),
-- make **R1 tapped, then held** talk to [Iris](https://github.com/p4ulcristian/iris): it
-  dictates, and on release the transcript goes to the Iris server instead of being typed,
+- make **L1 held** (or R1 tapped, then held) talk to [Iris](https://github.com/p4ulcristian/iris):
+  it dictates, and on release the transcript goes to the Iris server instead of being typed;
+  **L1 tapped** opens or closes her card on the desktop (Iris's `desk/` shell plugin),
 - rename actions in the cheat sheet, e.g. if you rebound Super+Enter.
 - turn off the flash: what each press did appears in the middle of the
   screen (the buttons pop in, then what they did: "L2 + □ ▸ Copy",
@@ -140,7 +161,7 @@ iris_controller/
 │                   loop (main.py) and reading config.toml (config.py)
 ├── device/         the controller: finder, touchpad, mic button, watchdog
 ├── keymap/         what each button does: bindings, your [[bind]]s, the keymap doc
-├── modes/          window (R2 held), game, talk (R1)
+├── modes/          window (R2 held), game, talk (R1, L1)
 ├── output/         virtual mouse + keyboard, Hyprland commands
 └── screen/         what you see, each an Omarchy shell plugin:
     ├── flash/      what a press just did, mid-screen

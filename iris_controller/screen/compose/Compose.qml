@@ -32,7 +32,8 @@ Item {
   readonly property color ink: Color.popups.text
   readonly property color accent: Color.accent
   readonly property color live: "#e8616b"     // ○ red: the mic is open
-  readonly property var symbolColor: ({ "△": "#3fc8a8", "○": "#e8616b", "✕": "#7b9fe8", "□": "#d58ad8" })
+  readonly property var symbolColor: ({ "△": "#3fc8a8", "○": "#e8616b", "✕": "#7b9fe8", "□": "#d58ad8",
+    "A": "#5fbf4a", "B": "#e0524a", "X": "#3f8fe0", "Y": "#e8c23a" })   // PlayStation, then Xbox
 
   readonly property var targetScreen: {
     var name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
@@ -42,9 +43,14 @@ Item {
     return screens.length > 0 ? screens[0] : null
   }
 
+  // The pad's names for the buttons, when it isn't a DualSense: { "✕": "A", ... }.
+  property var buttons: ({})
+  function b(name) { return root.buttons[name] || name }
+
   function apply(json) {
     try {
       var p = JSON.parse(json || "{}")
+      if (p.buttons) root.buttons = p.buttons
       root.phase = p.state || "ready"
       root.draft = p.draft || ""
       root.prompt = p.prompt || ""
@@ -224,9 +230,9 @@ Item {
               height: 30
               width: Math.min(chipLabel.implicitWidth + 20, 260)
               radius: 3
-              color: picked ? Util.alpha(root.symbolColor["□"], 0.18) : Util.alpha(root.ink, 0.05)
+              color: picked ? Util.alpha(root.symbolColor[root.b("□")], 0.18) : Util.alpha(root.ink, 0.05)
               border.width: picked ? 2 : 1
-              border.color: picked ? root.symbolColor["□"] : Util.alpha(root.ink, 0.15)
+              border.color: picked ? root.symbolColor[root.b("□")] : Util.alpha(root.ink, 0.15)
               Text {
                 id: chipLabel
                 anchors.centerIn: parent
@@ -249,11 +255,11 @@ Item {
           spacing: 26
           Repeater {
             model: [
-              { key: "Create", label: "Talk", on: root.phase !== "thinking" },
-              { key: "✕", label: "Done", on: root.phase !== "listening" && root.phase !== "thinking" },
-              { key: "△", label: "Undo", on: root.canUndo },
-              { key: "□", label: "Use recent", on: root.recent.length > 0 && root.phase !== "listening" && root.phase !== "thinking" },
-              { key: "○", label: "Put back", on: true }
+              { key: root.b("Create"), label: "Talk", on: root.phase !== "thinking" },
+              { key: root.b("✕"), label: "Done", on: root.phase !== "listening" && root.phase !== "thinking" },
+              { key: root.b("△"), label: "Undo", on: root.canUndo },
+              { key: root.b("□"), label: "Use recent", on: root.recent.length > 0 && root.phase !== "listening" && root.phase !== "thinking" },
+              { key: root.b("○"), label: "Put back", on: true }
             ]
             Row {
               required property var modelData

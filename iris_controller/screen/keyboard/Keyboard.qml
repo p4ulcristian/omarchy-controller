@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
-// On-screen keyboard for iris-controller (L1 held). The controller owns the
+// On-screen keyboard for iris-controller (Options). The controller owns the
 // layout, the highlight and the typing; this draws them and reports the
 // pointer over the keys back on keyboard.sock ("hover R C", "leave",
 // "down R C", "up"). It never takes keyboard focus, so keys land in the
@@ -66,9 +66,14 @@ Item {
     if (p.locked !== undefined) root.locked = p.locked
   }
 
+  // The pad's names for the buttons, when it isn't a DualSense: { "✕": "A", ... }.
+  property var buttons: ({})
+  function b(name) { return root.buttons[name] || name }
+
   function open(payloadJson) {
     try {
       var p = JSON.parse(payloadJson || "{}")
+      root.buttons = p.buttons || {}
       if (p.rows) root.rows = p.rows
       if (p.layers) root.layers = p.layers
       applyState(p)
@@ -263,7 +268,7 @@ Item {
             spacing: 8
             Text {
               anchors.verticalCenter: parent.verticalCenter
-              text: "L2 ‹"
+              text: root.b("L2") + " ‹"
               font.family: Style.font.family; font.pixelSize: 13
               color: Util.alpha(root.ink, 0.55)
             }
@@ -290,7 +295,7 @@ Item {
             }
             Text {
               anchors.verticalCenter: parent.verticalCenter
-              text: "› R2"
+              text: "› " + root.b("R2")
               font.family: Style.font.family; font.pixelSize: 13
               color: Util.alpha(root.ink, 0.55)
             }
@@ -356,7 +361,7 @@ Item {
               border.width: 1
               border.color: Util.alpha(root.hud, 0.35)
 
-              readonly property var glyphs: ["△", "○", "✕", "□"]
+              readonly property var glyphs: [root.b("△"), root.b("○"), root.b("✕"), root.b("□")]
               readonly property var idle: ["⌫", "close", "space", "⏎"]
               readonly property var slots: root.petal >= 0 ? (wheel.petals[root.petal] || []) : []
 

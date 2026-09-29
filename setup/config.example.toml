@@ -7,8 +7,8 @@
 # [dictate]
 # socket = "/run/user/1000/iris-dictation/iris-dictation.sock"
 
-# R1 tapped, then held = dictate and send the transcript to an Iris server
-# instead of typing it. Needs the dictate socket above to also accept
+# L1 held (or R1 tapped, then held) = dictate and send the transcript to an
+# Iris server instead of typing it; L1 tapped = her desktop card on / off. Needs the dictate socket above to also accept
 # "stop-return" (stop and reply with the text). The secret is read from a
 # KEY=value file so it stays out of this one.
 # [iris]
@@ -32,12 +32,17 @@
 # claude = "~/.local/bin/claude"   # if the service can't find it on PATH
 # url = "http://127.0.0.1:11434"   # ollama only
 
-# The on-screen keyboard (L1 held) has a top row of extras: pick one and ✕
+# The on-screen keyboard (Options) has a top row of extras: pick one and ✕
 # types the whole text, or presses the shortcut. These replace the defaults;
 # [] hides the row.
 # [keyboard]
 # extras = ["https://", ".com", "@gmail.com", "~/",
 #           { keys = "SHIFT + ENTER" }, { keys = "CTRL + B", label = "Background" }]
+
+# Sliding a finger on the touchpad moves the pointer: pixels per touchpad unit
+# (the pad is 1920 units wide). Default 0.3.
+# [touchpad]
+# speed = 0.3
 
 # Rename actions in the cheat sheet.
 # [labels]
@@ -60,7 +65,8 @@
 #   input: "L1 + <button>", "PS + <button>", "R2 + <D-pad ↑ → ↓ ←>",
 #          "R2 double" or "L2 double" (an R2 double tap delays every R2 hold by 0.25 s)
 #          buttons: ✕ ○ □ △ (or x o square triangle), L1 R1 L2 R2 L3 R3,
-#          Options, Create, PS
+#          Options, Create, PS. Xbox names work too, by where the button sits:
+#          A B Y LB RB LT RT LS RS Menu View Xbox (Xbox X is □ or square: x means ✕)
 #   run:   a shell command, or keys = "SUPER + W" to send a key combo
 #   label: the name in the cheat sheet
 # [[bind]]

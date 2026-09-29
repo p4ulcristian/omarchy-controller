@@ -30,6 +30,7 @@ import urllib.request
 from evdev import ecodes as e
 
 from ...core.config import CONFIG
+from ...device import profiles
 from ...keymap.bindings import CTRL, SUPER
 from ...modes.talk import DICTATE_SOCK, dictate, stop_return
 
@@ -292,7 +293,8 @@ class Compose:
             "state": "listening" if self.recording else "thinking" if self.busy
                      else "error" if self.error else "ready",
             "prompt": self.prompt, "draft": self.draft, "error": self.error,
-            "undo": bool(self.undo), "recent": self.recent, "pick": self.pick})
+            "undo": bool(self.undo), "recent": self.recent, "pick": self.pick,
+            "buttons": profiles.active.buttons()})
 
     def show(self) -> None:
         if not self.open:

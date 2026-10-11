@@ -167,7 +167,7 @@ Item {
       width: root.cols * (root.tile + root.gap) + 2 * root.pad - root.gap
       height: Math.min(root.visibleRows, Math.max(1, Math.ceil(root.apps.length / root.cols)))
               * (root.tile + root.gap) + 2 * root.pad - root.gap
-      radius: 6
+      radius: Style.cornerRadius
       color: Color.background
       border.width: 1.5
       border.color: Util.alpha(root.hud, 0.55)
@@ -199,7 +199,7 @@ Item {
           readonly property bool selected: index === root.current
           width: root.tile
           height: root.tile
-          radius: 6
+          radius: Style.cornerRadius
           color: selected ? Util.alpha(root.hud, 0.32) : Util.alpha(root.ink, 0.06)
           border.width: selected ? 3 : 1
           border.color: selected ? root.hud : Util.alpha(root.hud, 0.25)

@@ -193,7 +193,7 @@ Item {
     }
     implicitWidth: keyText.implicitWidth + 20
     implicitHeight: 32
-    radius: 2
+    radius: 3
     color: Util.alpha(root.hud, 0.08)
     border.width: 1
     border.color: Util.alpha(root.hud, 0.4)

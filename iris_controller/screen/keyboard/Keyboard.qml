@@ -136,7 +136,7 @@ Item {
         x: card.cut
         width: 72
         height: 22
-        radius: 6
+        radius: Style.cornerRadius
         color: gripArea.containsMouse || gripArea.drag.active ? Qt.lighter(root.hud, 1.25) : root.hud
 
         Text {
